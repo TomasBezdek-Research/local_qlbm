@@ -15,7 +15,6 @@ from qrisp import (
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
     QuantumBool,
 )
-
 from src.types import BoundaryCondition, RegionOfInterest, VelocitySet
 
 
@@ -563,12 +562,6 @@ class LBMGrid:
     ##################
     #   Utilities    #
     ##################
-    def __repr__(self):
-        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
-
-    def __str__(self):
-        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
-
     @staticmethod
     def get_optimal_m(a):
         """
@@ -677,3 +670,27 @@ class LBMGrid:
             return all(low <= c <= high for c, (low, high) in zip(coords, roi.bounds))
         else:
             return list(coords) in roi.points_list
+
+    ################
+    #   Display    #
+    ################
+    def __repr__(self):
+        """Developer-friendly representation."""
+        # We use !r to get the repr of the velocity_set (e.g., VelocitySet.D2Q9)
+        return (
+            f"LBMGrid(grid_size={self._grid_size.tolist()}, "
+            f"velocity_set={self._velocity_set!r}, "
+            f"dimensions={self._dimensions})"
+        )
+
+    def __str__(self):
+        """User-friendly summary."""
+        # This provides a clean 'dashboard' view of the grid
+        return (
+            f"--- Quantum LBM Grid: {self._name or 'Unnamed'} ---\n"
+            f"Dimensions : {self._dimensions}D\n"
+            f"Grid Size  : {' x '.join(map(str, self._grid_size))}\n"
+            f"Velocity   : {self._velocity_set.name}\n"
+            f"Total Size : {self._total_size} qubits\n"
+            f"--------------------------------------"
+        )
