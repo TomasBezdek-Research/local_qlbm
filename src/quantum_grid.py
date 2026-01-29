@@ -1,7 +1,6 @@
-import enum
+from typing import Dict, List
 
 import numpy as np
-from mpmath.functions.functions import re
 from numpy.typing import ArrayLike
 from qrisp import (
     IQAE,
@@ -10,44 +9,14 @@ from qrisp import (
     amplitude_amplification,
     auto_uncompute,
     multi_measurement,
+    prepare,
     z,
 )
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
     QuantumBool,
 )
-from typing_extensions import Dict
 
-
-class VelocitySet(enum.Enum):
-    D1Q3 = (1, 3, [-1, 0, 1])
-    D2Q5 = (2, 5, [-1, 0, 1])
-    D2Q9 = (2, 9, [-1, 0, 1])
-    D3Q15 = (3, 15, [-1, 0, 1])
-    D3Q19 = (3, 19, [-1, 0, 1])
-    D3Q27 = (3, 27, [-1, 0, 1])
-
-    D2Q21 = (2, 21, [-2, -1, 0, 1, 2])
-
-    @property
-    def dimensions(self) -> int:
-        return self.value[0]
-
-    @property
-    def velocity_set_size(self) -> int:
-        return self.value[1]
-
-    @property
-    def unique_coordinates(self) -> list:
-        return self.value[2]
-
-
-class BoundaryCondition(enum.Enum):
-    PERIODIC = 0
-    BOUNCE_BACK = 1
-
-    @property
-    def aditional_layers(self) -> int:
-        return 2 * self.value
+from src.types import BoundaryCondition, RegionOfInterest, VelocitySet
 
 
 class LBMGrid:
@@ -91,9 +60,9 @@ class LBMGrid:
 
         # Initialize the grid
         # Positions
-        self._positions_register_layers = self._grid_size + self._boundary_layers
+        self._positions_register_shape = self._grid_size + self._boundary_layers
         self._positions_register = [
-            QuantumModulus(size) for size in self._positions_register_layers
+            QuantumModulus(size) for size in self._positions_register_shape
         ]
         self._position_register_sizes = np.array(
             [mod.size for mod in self._positions_register], dtype=np.int32
@@ -122,7 +91,139 @@ class LBMGrid:
             for _ in range(self._dimensions)
         ]
 
-    def run_simulation(self, iterations=1):
+    ########################
+    #   Complex Workflow   #
+    ########################
+    def analyze_region(
+        self,
+        roi: RegionOfInterest,
+        simulation_iterations: int = 1,
+        eps: float = 0.01,
+        shots: int = 1000,
+        backend=None,
+    ) -> Dict:
+        """
+        1. Estimates total density (f) in ROI using IQAE.
+        2. Amplifies ROI to make internal distribution measurable.
+        3. Measures cells and rescales so their sum equals f.
+
+        Args:
+            roi: RegionOfInterest object.
+            simulation_iterations: Number of iterations to run the simulation.
+            eps: The desired accuracy of the estimate.
+            shots: Number of shots to measure.
+
+        Returns:
+            A dict with the following keys:
+                total_density: The total density of the region.
+                cells: A dict of the cells in the region.
+        """
+        # 1. Encode ROI for internal ghost-layer logic
+        encoded_roi = self._encode_roi(roi)
+
+        # 2. Get the high-precision "Mass" of the region
+        print("Phase 1: Estimating total density (f)...")
+        f = self.estimate_region_density(
+            roi=encoded_roi,
+            simulation_iterations=simulation_iterations,
+            eps=eps,
+            shots=shots,
+            backend=backend,
+        )
+
+        if f <= 0:
+            print("Density is zero; skipping amplification.")
+            return {"total_density": 0, "cells": {}}
+
+        # 3. Amplify so the shots actually land in the ROI
+        print(f"Phase 2: Amplifying region (f={f:.4f})...")
+        self.boost_region(
+            region_density=f,
+            roi=encoded_roi,
+            simulation_iterations=simulation_iterations,
+        )
+
+        # 4. Measure physical density
+        # Note: This dict only contains cells that were actually measured (shots > 0)
+        counts = self.get_physical_density(shots=shots, backend=backend)
+
+        # 5. Filter counts to only include the ROI
+        # (in case some probability leaked or noise occurred)
+        roi_counts = {}
+        total_measured_prob = 0
+
+        for coords, prob in counts.items():
+            if self._is_in_roi(coords, roi):
+                roi_counts[coords] = prob
+                total_measured_prob += prob
+
+        # 6. Rescale: (Measured Cell Prob / Total Measured Prob) * f
+        # This makes the sum of roi_rescaled exactly equal to f.
+        roi_rescaled = {}
+        if total_measured_prob > 0:
+            scale_factor = f / total_measured_prob
+            for coords, prob in roi_counts.items():
+                roi_rescaled[coords] = prob * scale_factor
+
+        return {"total_density": f, "cells": roi_rescaled}
+
+    ################################
+    #   Initialization Functions   #
+    ################################
+
+    def set_initial_state(self, bubble_roi: RegionOfInterest, velocity: List[int]):
+        """
+        Stores the initial configuration.
+        Does NOT apply gates yet.
+        """
+        self._initial_bubble = bubble_roi
+        self._initial_velocity = velocity
+
+    def apply_initialization(self):
+        """
+        Applies the gates to set the registers to t=0.
+        This is called internally by IQAE/AA.
+        """
+        # 1. Prepare Positions
+        encoded_bounds = self._get_encoded_bounds(self._initial_bubble.bounds)
+        for d in range(self._dimensions):
+            num_states = 2 ** self._positions_register[d].size
+            statevector = np.zeros(num_states)
+            start, end = encoded_bounds[d]
+            statevector[start : end + 1] = 1.0
+            statevector /= np.linalg.norm(statevector)
+            prepare(self._positions_register[d], statevector)
+
+        # 2. Prepare Velocity
+        self._set_global_velocity(self._initial_velocity)
+
+    def _set_global_velocity(self, velocity_vector):
+        """
+        Sets the velocity u for the transport equation.
+        velocity_vector: list of floats/ints like [1, -1]
+
+        Args:
+            velocity_vector: The velocity vector.
+        """
+        for d in range(self._dimensions):
+            u_val = velocity_vector[d]
+
+            # Encode magnitude
+            self._velocity_register[d].encode(abs(u_val))
+
+            # Encode sign: 1 for positive, 0 for negative
+            # (Note: In your logic, True/1 is positive, False/0 is negative)
+            if u_val >= 0:
+                self._sign_register[d].encode(1)
+            else:
+                self._sign_register[d].encode(0)
+
+    ###############################
+    #   Simulation Functions    #
+    ###############################
+    def run_simulation(self, iterations=1, init=True):
+        if init:
+            self.apply_initialization()
         for _ in range(iterations):
             self.stream()
             self.apply_boundary_conditions()
@@ -147,37 +248,26 @@ class LBMGrid:
         for d in range(self._dimensions):
             if self._boundary_conditions[d] == BoundaryCondition.PERIODIC:
                 continue
-            with (self._positions_register[d] == 0) | (
-                self._positions_register[d] == self._grid_size[d] + 1
-            ):
+            # Create a clear condition for the boundary
+            at_lower = self._positions_register[d] == 0
+            at_upper = self._positions_register[d] == self._grid_size[d] + 1
+            is_at_boundary = at_lower | at_upper
+            with is_at_boundary:
+                # Flip the sign register if the position is out of bounds
                 self._sign_register[d] = ~self._sign_register[d]
+                # Reflect the position (streaming correction step)
                 with self._sign_register[d]:
                     self._positions_register[d] += self._velocity_register[d]
                 with ~self._sign_register[d]:
                     self._positions_register[d] -= self._velocity_register[d]
 
-    @auto_uncompute
-    def boundary_check(self):
-        """
-        Check if the positions are within the grid boundaries.
-        Flip the sign register if the position is out of bounds.
-        """
-        for d in range(self._dimensions):
-            if self._boundary_conditions[d] == BoundaryCondition.PERIODIC:
-                continue
-            with (self._positions_register[d] == 0) | (
-                self._positions_register[d] == self._grid_size[d] + 1
-            ):
-                self._sign_register[d] = ~self._sign_register[d]
-
     #############################
     #   Measurement Functions   #
     #############################
-    def measure_density(self, shots=None, backend=None) -> Dict:
+    def _measure_density(self, shots=None, backend=None) -> Dict:
         """
         Measure the density of the grid.
         """
-        # TODO: Implement coordinates recalculation based on boundary conditions
         measurement = multi_measurement(
             self._positions_register, shots=shots, backend=backend
         )
@@ -187,7 +277,6 @@ class LBMGrid:
         """
         Measure the full state of the grid.
         """
-        # TODO: Implement coordinates recalculation based on boundary conditions
         measurement = multi_measurement(
             self._positions_register + self._sign_register + self._velocity_register,
             shots=shots,
@@ -195,17 +284,59 @@ class LBMGrid:
         )
         return measurement
 
+    def get_physical_density(self, shots=None, backend=None) -> Dict:
+        """
+        Measures density and strips away boundary layers/ghost cells.
+        Returns a dict with user-space coordinate tuples as keys.
+
+        Args:
+            shots: Number of shots to measure.
+            backend: Backend to use for measurement.
+
+        Returns:
+            A dict with the following keys:
+                total_density: The total density of the region.
+                cells: A dict of the cells in the region.
+        """
+        raw_data = self._measure_density(shots=shots, backend=backend)
+        physical_data = {}
+
+        for state_tuple, prob in raw_data.items():
+            # Convert each dimension in the tuple
+            user_coords = tuple(
+                self._encoded_to_user_coord(state_tuple[d], d)
+                for d in range(self._dimensions)
+            )
+
+            # Filter out ghost cells (coords < 0 or coords >= grid_size)
+            is_inside = all(
+                0 <= user_coords[d] < self._grid_size[d]
+                for d in range(self._dimensions)
+            )
+
+            if is_inside:
+                physical_data[user_coords] = physical_data.get(user_coords, 0) + prob
+
+        return physical_data
+
     def estimate_region_density(
         self,
-        bounds=None,
-        points_list=None,
-        simulation_iterations=1,
-        eps=0.01,
-        alpha=0.05,
+        roi: RegionOfInterest,
+        simulation_iterations: int = 1,
+        eps: float = 0.01,
+        alpha: float = 0.05,
+        shots=None,
+        backend=None,
     ):
         """
         Uses IQAE to estimate the probability mass (density) within
-        the subgrid defined by 'bounds'.
+        the region defined by 'roi'.
+
+        Args:
+            roi: RegionOfInterest object.
+            simulation_iterations: Number of iterations to run the simulation.
+            eps: The desired accuracy of the estimate.
+            alpha: The desired confidence level of the estimate.
         """
         # 1. Create a fresh indicator qubit (the 'good state' marker)
         target_qubit = QuantumBool()
@@ -219,24 +350,39 @@ class LBMGrid:
             # Extract the target bit (the last argument)
             target = args[-1]
 
-            # Step A: Run your simulation logic (Streaming + BC)
+            # Step A: Run your simulation logic (Initialization + Streaming + BC)
             self.run_simulation(iterations=simulation_iterations)
 
             # Step B: Apply the oracle logic
             # We compute the condition and XOR it onto the target qubit.
 
-            region_oracle = self._get_region_oracle(
-                bounds=bounds, points_list=points_list
-            )
+            region_oracle = self._get_region_oracle(roi=roi)
             target ^= region_oracle
 
         # 4. Execute IQAE
         # This returns a float representing the density in the subgrid
-        return IQAE(iqae_vars, iqae_wrapper, eps=eps, alpha=alpha)
+        mes_kwargs = {"backend": backend}
+        if shots is not None:
+            mes_kwargs["shots"] = shots
+        return IQAE(
+            iqae_vars,
+            iqae_wrapper,
+            eps=eps,
+            alpha=alpha,
+            mes_kwargs=mes_kwargs,
+        )
 
     def boost_region(
-        self, region_density, bounds=None, points_list=None, simulation_iterations=1
+        self, region_density, roi: RegionOfInterest, simulation_iterations: int = 1
     ):
+        """
+        Amplifies the density in a specific region of the grid.
+
+        Args:
+            region_density: The initial probability of the region.
+            roi: RegionOfInterest object.
+            simulation_iterations: Number of iterations to run the simulation.
+        """
         if region_density <= 0:
             print("Density is 0, nothing to amplify.")
             return
@@ -261,21 +407,24 @@ class LBMGrid:
         # 4. Perform the amplification
         # Note: ensure simulation_iterations matches the state that created region_density!
         self.amplify_region(
-            bounds=bounds,
-            points_list=points_list,
+            roi=roi,
             amplification_iterations=m,
             simulation_iterations=simulation_iterations,
         )
 
     def amplify_region(
         self,
-        bounds=None,
-        points_list=None,
-        amplification_iterations=1,
-        simulation_iterations=1,
+        roi: RegionOfInterest,
+        amplification_iterations: int = 1,
+        simulation_iterations: int = 1,
     ):
         """
         Amplifies the density in a specific region of the grid.
+
+        Args:
+            roi: RegionOfInterest object.
+            amplification_iterations: Number of iterations to amplify.
+            simulation_iterations: Number of iterations to run the simulation.
         """
         # args tells AA which registers are being modified
         args = self._positions_register
@@ -288,7 +437,7 @@ class LBMGrid:
         def oracle_function(*pos_regs):
             # We re-evaluate the oracle based on the NEW positions
             # created by state_function
-            condition = self._get_region_oracle(bounds=bounds, points_list=points_list)
+            condition = self._get_region_oracle(roi=roi)
 
             # Apply the phase flip required for AA
             z(condition)
@@ -304,30 +453,19 @@ class LBMGrid:
         )
 
     @auto_uncompute
-    def _get_region_oracle(self, bounds=None, points_list=None) -> QuantumBool:
+    def _get_region_oracle(self, roi: RegionOfInterest) -> QuantumBool:
         """
         Returns the oracle for the specified region.
 
         Args:
-            bounds: List of tuples [(min_d0, max_d0), (min_d1, max_d1), ...]
-            Example for 2D: [(2, 5), (1, 3)]
-            points_list: List of coordinate lists [[x1, y1,...], [x2, y2,...], ...]
-            Example for 2D: [[2, 3], [5, 7]]
+            roi: RegionOfInterest object.
 
         Returns:
             A QuantumBool representing the region.
         """
-        if bounds is not None and points_list is not None:
-            raise ValueError(
-                "Either 'bounds' or 'points_list' must be specified, but not both."
-            )
-        if bounds is None and points_list is None:
-            raise ValueError("Either 'bounds' or 'points_list' must be specified.")
-
-        if bounds is not None:
-            return self._get_subgrid_oracle(bounds)
-        else:
-            return self._get_multi_point_oracle(points_list)
+        if roi.is_subgrid:
+            return self._get_subgrid_oracle(roi.bounds)
+        return self._get_multi_point_oracle(roi.points_list)
 
     @auto_uncompute
     def _get_subgrid_oracle(self, bounds) -> QuantumBool:
@@ -379,12 +517,6 @@ class LBMGrid:
 
         return final_oracle
 
-    def __repr__(self):
-        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
-
-    def __str__(self):
-        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
-
     ####################
     #    Properties    #
     ####################
@@ -431,6 +563,12 @@ class LBMGrid:
     ##################
     #   Utilities    #
     ##################
+    def __repr__(self):
+        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
+
+    def __str__(self):
+        return f"LBMGrid({self._grid_size}, {self._velocity_set})"
+
     @staticmethod
     def get_optimal_m(a):
         """
@@ -474,3 +612,68 @@ class LBMGrid:
         theta = np.arcsin(np.sqrt(a))
         # This centers the rotation around the 90-degree (pi/2) target
         return max(0, int(np.round(np.pi / (4 * theta) - 0.5)))
+
+    def results_to_numpy(self, analysis_results: Dict) -> np.ndarray:
+        """Converts the 'cells' dict from analyze_region into a dense NumPy array.
+
+        Args:
+            analysis_results: The output of analyze_region.
+
+        Returns:
+            A NumPy array with the same shape as the grid.
+        """
+        grid = np.zeros(self._grid_size)
+        cells = analysis_results.get("cells", {})
+        for coords, val in cells.items():
+            grid[coords] = val
+        return grid
+
+    ###################
+    #   Coordinates   #
+    ###################
+    def _user_to_encoded_coord(self, user_coord, dimension):
+        """Converts user 0-indexed coord to register index."""
+        return user_coord + self._boundary_conditions[dimension].offset
+
+    def _encoded_to_user_coord(self, encoded_coord, dimension):
+        """Converts register index back to user 0-indexed coord."""
+        return encoded_coord - self._boundary_conditions[dimension].offset
+
+    def _get_encoded_bounds(self, user_bounds):
+        """Converts list of user (min, max) tuples to encoded indices."""
+        return [
+            (self._user_to_encoded_coord(low, d), self._user_to_encoded_coord(high, d))
+            for d, (low, high) in enumerate(user_bounds)
+        ]
+
+    def _get_encoded_point(self, user_point):
+        """Converts user [x, y, ...] list to encoded indices."""
+        return [
+            self._user_to_encoded_coord(coord, d) for d, coord in enumerate(user_point)
+        ]
+
+    def _get_encoded_points(self, user_points):
+        """Converts list of user [x, y, ...] tuples to encoded indices."""
+        return [self._get_encoded_point(point) for point in user_points]
+
+    def _encode_roi(self, user_roi: RegionOfInterest) -> RegionOfInterest:
+        """Converts user-space ROI to register-space (encoded) ROI."""
+        if user_roi.is_subgrid:
+            encoded_bounds = self._get_encoded_bounds(user_bounds=user_roi.bounds)
+            return RegionOfInterest(bounds=encoded_bounds)
+
+        else:
+            encoded_points = self._get_encoded_points(user_points=user_roi.points_list)
+            return RegionOfInterest(points_list=encoded_points)
+
+    def _is_in_roi(self, coords: tuple, roi: RegionOfInterest) -> bool:
+        """Helper to check if user-space coords are inside the user-space ROI.
+
+        Args:
+            coords: A tuple of user-space coordinates.
+            roi: A RegionOfInterest object.
+        """
+        if roi.is_subgrid:
+            return all(low <= c <= high for c, (low, high) in zip(coords, roi.bounds))
+        else:
+            return list(coords) in roi.points_list
