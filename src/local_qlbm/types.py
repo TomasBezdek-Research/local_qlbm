@@ -66,3 +66,21 @@ class RegionOfInterest:
     @property
     def is_point_cloud(self) -> bool:
         return self.points_list is not None
+
+    def contains(self, coords: tuple) -> bool:
+        """
+        Checks if the given user-space coordinates are inside this ROI.
+
+        Args:
+            coords (tuple): The user-space coordinates to check.
+
+        Returns:
+            bool: True if the coordinates are inside the ROI, False otherwise.
+        """
+        if self.is_subgrid:
+            # Check if coords are within the n-dimensional bounding box
+            return all(low <= c <= high for c, (low, high) in zip(coords, self.bounds))
+        else:
+            # Check if the coordinate exists in the discrete point list
+            # We convert to list if points_list is a list of lists
+            return list(coords) in self.points_list

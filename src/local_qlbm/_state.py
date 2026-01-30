@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -11,12 +11,12 @@ from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path
     QuantumBool,
 )
 
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from .types import BoundaryCondition, RegionOfInterest, VelocitySet
 
 
 class LBMState:
     """
-    Class representing a quantum LBM grid.
+    Class representing a quantum LBM state.
 
     Parameters
     ----------
@@ -27,6 +27,9 @@ class LBMState:
     name : str, optional
         The name of the grid.
     """
+
+    _initial_bubble: RegionOfInterest
+    _initial_velocity: ArrayLike
 
     def __init__(
         self,
@@ -86,12 +89,30 @@ class LBMState:
             for _ in range(self._dimensions)
         ]
 
+    ################################
+    #   Initialization Functions   #
+    ################################
+    def set_initial_state(self, bubble_roi: RegionOfInterest, velocity: ArrayLike):
+        """
+        Stores the initial configuration.
+        Does NOT apply gates yet.
+        """
+        self._initial_bubble = bubble_roi
+        self._initial_velocity = velocity
+
     #############################
     #   Measurement Functions   #
     #############################
     def _measure_density(self, shots=None, backend=None) -> Dict:
         """
         Measure the density of the grid.
+
+        Args:
+            shots: Number of shots to measure.
+            backend: Backend to use for measurement.
+
+        Returns:
+            Measurement results.
         """
         measurement = multi_measurement(
             self._positions_register, shots=shots, backend=backend
@@ -101,6 +122,13 @@ class LBMState:
     def full_measurement(self, shots=None, backend=None) -> Dict:
         """
         Measure the full state of the grid.
+
+        Args:
+            shots: Number of shots to measure.
+            backend: Backend to use for measurement.
+
+        Returns:
+            Measurement results.
         """
         measurement = multi_measurement(
             self._positions_register + self._sign_register + self._velocity_register,
@@ -129,7 +157,7 @@ class LBMState:
         for state_tuple, prob in raw_data.items():
             # Convert each dimension in the tuple
             user_coords = tuple(
-                self._encoded_to_user_coord(state_tuple[d], d)
+                self.encoded_to_user_coord(state_tuple[d], d)
                 for d in range(self._dimensions)
             )
 
@@ -191,6 +219,14 @@ class LBMState:
     def boundary_conditions(self):
         return self._boundary_conditions
 
+    @property
+    def initial_bubble(self):
+        return self._initial_bubble
+
+    @property
+    def initial_velocity(self):
+        return self._initial_velocity
+
     ##################
     #   Utilities    #
     ##################
@@ -212,37 +248,81 @@ class LBMState:
     ###################
     #   Coordinates   #
     ###################
-    def _user_to_encoded_coord(self, user_coord, dimension):
-        """Converts user 0-indexed coord to register index."""
+    def user_to_encoded_coord(self, user_coord, dimension):
+        """Converts user 0-indexed coord to register index.
+
+        Args:
+            user_coord: The user 0-indexed coordinate.
+            dimension: The dimension of the coordinate.
+
+        Returns:
+            Coordinates transformed to register index.
+        """
         return user_coord + self._boundary_conditions[dimension].offset
 
-    def _encoded_to_user_coord(self, encoded_coord, dimension):
-        """Converts register index back to user 0-indexed coord."""
+    def encoded_to_user_coord(self, encoded_coord, dimension):
+        """Converts register index back to user 0-indexed coord.
+
+        Args:
+            encoded_coord: The register index.
+            dimension: The dimension of the coordinate.
+
+        Returns:
+            Coordinates transformed to user 0-indexed coordinate.
+        """
         return encoded_coord - self._boundary_conditions[dimension].offset
 
-    def _get_encoded_bounds(self, user_bounds):
-        """Converts list of user (min, max) tuples to encoded indices."""
+    def get_encoded_bounds(self, user_bounds):
+        """Converts list of user (min, max) tuples to encoded indices.
+
+        Args:
+            user_bounds: List of user (min, max) tuples.
+
+        Returns:
+            List of encoded (min, max) tuples.
+        """
         return [
-            (self._user_to_encoded_coord(low, d), self._user_to_encoded_coord(high, d))
+            (self.user_to_encoded_coord(low, d), self.user_to_encoded_coord(high, d))
             for d, (low, high) in enumerate(user_bounds)
         ]
 
-    def _get_encoded_point(self, user_point):
-        """Converts user [x, y, ...] list to encoded indices."""
+    def get_encoded_point(self, user_point):
+        """Converts user [x, y, ...] list to encoded indices.
+
+        Args:
+            user_point: List of user coordinates.
+
+        Returns:
+            List of encoded coordinates.
+        """
         return [
-            self._user_to_encoded_coord(coord, d) for d, coord in enumerate(user_point)
+            self.user_to_encoded_coord(coord, d) for d, coord in enumerate(user_point)
         ]
 
-    def _get_encoded_points(self, user_points):
-        """Converts list of user [x, y, ...] tuples to encoded indices."""
-        return [self._get_encoded_point(point) for point in user_points]
+    def get_encoded_points(self, user_points):
+        """Converts list of user [x, y, ...] tuples to encoded indices.
 
-    def _encode_roi(self, user_roi: RegionOfInterest) -> RegionOfInterest:
-        """Converts user-space ROI to register-space (encoded) ROI."""
+        Args:
+            user_points: List of user [x, y, ...] tuples.
+
+        Returns:
+            List of encoded [x, y, ...] tuples.
+        """
+        return [self.get_encoded_point(point) for point in user_points]
+
+    def encode_roi(self, user_roi: RegionOfInterest) -> RegionOfInterest:
+        """Converts user-space ROI to register-space (encoded) ROI.
+
+        Args:
+            user_roi: User-space ROI.
+
+        Returns:
+            Register-space (encoded) ROI.
+        """
         if user_roi.is_subgrid:
-            encoded_bounds = self._get_encoded_bounds(user_bounds=user_roi.bounds)
+            encoded_bounds = self.get_encoded_bounds(user_bounds=user_roi.bounds)
             return RegionOfInterest(bounds=encoded_bounds)
 
         else:
-            encoded_points = self._get_encoded_points(user_points=user_roi.points_list)
+            encoded_points = self.get_encoded_points(user_points=user_roi.points_list)
             return RegionOfInterest(points_list=encoded_points)
