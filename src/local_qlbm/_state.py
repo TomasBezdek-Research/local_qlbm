@@ -41,7 +41,7 @@ class LBMState:
         name=None,
     ):
         self._name = name
-        self._grid_size = np.array(grid_size, dtype=np.int32)
+        self._grid_size = np.array(grid_size, dtype=int)
         self._velocity_set = velocity_set
         self._dimensions = self._grid_size.size
         if not self._dimensions == velocity_set.dimensions:
@@ -73,7 +73,7 @@ class LBMState:
             QuantumModulus(int(size)) for size in self._positions_register_shape
         ]
         self._position_register_sizes = np.array(
-            [mod.size for mod in self._positions_register], dtype=np.int32
+            [mod.size for mod in self._positions_register], dtype=int
         )
 
         # Velocities
