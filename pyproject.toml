@@ -7,3 +7,10 @@ requires-python = ">=3.11"
 dependencies = [
     "qrisp>=0.7.17",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_qlbm"]

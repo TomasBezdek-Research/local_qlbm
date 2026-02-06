@@ -1,20 +1,6 @@
-from typing import Dict, List
+from typing import Dict
 
-import numpy as np
 from numpy.typing import ArrayLike
-from qrisp import (
-    IQAE,
-    QuantumFloat,
-    QuantumModulus,
-    amplitude_amplification,
-    auto_uncompute,
-    multi_measurement,
-    prepare,
-    z,
-)
-from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
-    QuantumBool,
-)
 
 from ._analyzer import LBMAnalyzer
 from ._engine import LBMEngine
@@ -32,6 +18,9 @@ class LBMGrid:
         The size of the grid.
     velocity_set : VelocitySet
         The set of velocities to use.
+    boundary_conditions : list[BoundaryCondition] | BoundaryCondition
+        The boundary conditions to use. If a single condition is provided, it will be
+        applied to all dimensions.
     name : str, optional
         The name of the grid.
     """
@@ -40,7 +29,7 @@ class LBMGrid:
         self,
         grid_size: ArrayLike,
         velocity_set: VelocitySet,
-        boundary_conditions: list[BoundaryCondition],
+        boundary_conditions: list[BoundaryCondition] | BoundaryCondition,
         name=None,
     ):
         # Initialize internal components
@@ -86,9 +75,9 @@ class LBMGrid:
     ###################
     #   Measurement   #
     ###################
-    def measure_density(self):
+    def measure_density(self) -> Dict:
         """Measures the simulation"""
-        self._state.get_physical_density()
+        return self._state.get_physical_density()
 
     #############################
     #   Local region analysis   #

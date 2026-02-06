@@ -1,5 +1,5 @@
 import numpy as np
-from qrisp import auto_uncompute, prepare
+from qrisp import auto_uncompute, control, prepare
 
 from ._state import LBMState
 from .types import BoundaryCondition
@@ -103,13 +103,11 @@ class LBMEngine:
         for d in range(self._state.dimensions):
             if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
                 continue
-            # Create a clear condition for the boundary
-            at_lower = self._state.positions_register[d] == 0
-            at_upper = self._state.positions_register[d] == self._state.grid_size[d] + 1
-            is_at_boundary = at_lower | at_upper
-            with is_at_boundary:
+
+            self._is_out_boundary(d)
+            with control(self._state.boundary_ancillas[d]):
                 # Flip the sign register if the position is out of bounds
-                self._state.sign_register[d] = ~self._state.sign_register[d]
+                self._state.sign_register[d].flip()
                 # Reflect the position (streaming correction step)
                 with self._state.sign_register[d]:
                     self._state.positions_register[d] += self._state.velocity_register[
@@ -119,3 +117,48 @@ class LBMEngine:
                     self._state.positions_register[d] -= self._state.velocity_register[
                         d
                     ]
+            self._comes_out_of_boundary(d)
+
+    def _is_out_boundary(self, dim: int):
+        """
+        Flips the boundary ancilla for the given dimension if the position is out of bounds.
+
+        TODO: Take just first layer outside boundaries
+        - for bigger velocity sets (more than 1 in each dimension) has to more complex logic.
+
+        Args:
+            dim: The dimension to check.
+        """
+        with (
+            self._state.positions_register[dim] == self._state.boundary_offsets[dim] - 1
+        ):
+            self._state.boundary_ancillas[dim].flip()
+        with self._state.positions_register[dim] == int(
+            self._state.grid_size[dim] + self._state.boundary_offsets[dim]
+        ):
+            self._state.boundary_ancillas[dim].flip()
+
+    def _comes_out_of_boundary(self, dim: int):
+        """
+        Flips the boundary ancilla for the given dimension if the position is coming out of bounds.
+
+
+        TODO: Take just first layer outside boundaries
+        - for bigger velocity sets (more than 1 in each dimension) has to more complex logic.
+
+        Args:
+            dim: The dimension to check.
+        """
+        # 1. Condition: At lower boundary AND moving towards it (sign is True/1)
+        with self._state.positions_register[dim] == int(
+            self._state.boundary_offsets[dim]
+        ):
+            with self._state.sign_register[dim]:
+                self._state.boundary_ancillas[dim].flip()
+
+        # 2. Condition: At upper boundary AND moving towards it (sign is False/0)
+        with self._state.positions_register[dim] == int(
+            self._state.grid_size[dim] + self._state.boundary_offsets[dim] - 1
+        ):
+            with ~self._state.sign_register[dim]:
+                self._state.boundary_ancillas[dim].flip()
