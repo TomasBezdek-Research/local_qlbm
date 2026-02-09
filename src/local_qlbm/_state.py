@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -24,6 +24,8 @@ class LBMState:
         The size of the grid.
     velocity_set : VelocitySet
         The set of velocities to use.
+    boundary_conditions : list[BoundaryCondition] | BoundaryCondition
+        The boundary conditions to use.
     name : str, optional
         The name of the grid.
     """
@@ -35,11 +37,11 @@ class LBMState:
         self,
         grid_size: ArrayLike,
         velocity_set: VelocitySet,
-        boundary_conditions: list[BoundaryCondition],
+        boundary_conditions: list[BoundaryCondition] | BoundaryCondition,
         name=None,
     ):
         self._name = name
-        self._grid_size = np.array(grid_size, dtype=np.int32)
+        self._grid_size = np.array(grid_size, dtype=int)
         self._velocity_set = velocity_set
         self._dimensions = self._grid_size.size
         if not self._dimensions == velocity_set.dimensions:
@@ -47,23 +49,31 @@ class LBMState:
                 f"Grid dimensions {self._dimensions} must match velocity set dimensions {velocity_set.dimensions}"
             )
 
+        if isinstance(boundary_conditions, BoundaryCondition):
+            boundary_conditions = [boundary_conditions] * self._dimensions
         if len(boundary_conditions) != self._dimensions:
             raise ValueError(
                 f"Boundary conditions must be specified for each dimension. Got {len(boundary_conditions)} conditions for {self._dimensions} dimensions."
             )
         self._boundary_conditions = boundary_conditions
         self._boundary_layers = np.array(
-            [layer.aditional_layers for layer in boundary_conditions], np.int32
+            [layer.aditional_layers for layer in boundary_conditions], int
         )
+        self._boundary_offsets = [bc.offset for bc in self._boundary_conditions]
+
+        self._boundary_ancillas = {}
+        for i, bc in enumerate(self._boundary_conditions):
+            if bc == BoundaryCondition.BOUNCE_BACK:
+                self._boundary_ancillas[i] = QuantumBool()
 
         # Initialize the grid
         # Positions
         self._positions_register_shape = self._grid_size + self._boundary_layers
         self._positions_register = [
-            QuantumModulus(size) for size in self._positions_register_shape
+            QuantumModulus(int(size)) for size in self._positions_register_shape
         ]
         self._position_register_sizes = np.array(
-            [mod.size for mod in self._positions_register], dtype=np.int32
+            [mod.size for mod in self._positions_register], dtype=int
         )
 
         # Velocities
@@ -212,12 +222,20 @@ class LBMState:
         return self._sign_register
 
     @property
+    def boundary_ancillas(self):
+        return self._boundary_ancillas
+
+    @property
     def total_size(self):
         return self._total_size
 
     @property
     def boundary_conditions(self):
         return self._boundary_conditions
+
+    @property
+    def boundary_offsets(self):
+        return self._boundary_offsets
 
     @property
     def initial_bubble(self):

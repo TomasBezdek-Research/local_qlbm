@@ -1,7 +1,6 @@
 from typing import Dict
 
 import numpy as np
-from jax._src.tree_util import FlattenedIndexKey
 from qrisp import (
     IQAE,
     amplitude_amplification,
