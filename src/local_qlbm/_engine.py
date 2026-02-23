@@ -24,6 +24,22 @@ class LBMEngine:
     ################################
     #   Initialization Functions   #
     ################################
+    def apply_initialization_external_registers(
+        self,
+        position_register: list,
+        velocity_register: list,
+        sign_register: list,
+        boundary_ancillas: list,
+    ):
+        """
+        Applies the gates to set the registers to t=0.
+        This is called internally by IQAE/AA.
+        """
+        self._state.set_registers(
+            position_register, sign_register, velocity_register, boundary_ancillas
+        )
+        self.apply_initialization()
+
     def apply_initialization(self):
         """
         Applies the gates to set the registers to t=0.
@@ -62,9 +78,9 @@ class LBMEngine:
             # Encode sign: 1 for positive, 0 for negative
             # (Note: In your logic, True/1 is positive, False/0 is negative)
             if u_val >= 0:
-                self._state.sign_register[d].encode(1)
+                self._state.sign_register[d].encode(True)
             else:
-                self._state.sign_register[d].encode(0)
+                self._state.sign_register[d].encode(False)
 
     ###############################
     #   Simulation Functions    #
@@ -77,6 +93,31 @@ class LBMEngine:
             iterations: The number of iterations to run.
             init: Whether to apply the initial conditions before running the simulation.
         """
+        if init:
+            self.apply_initialization()
+        for _ in range(iterations):
+            self.stream()
+            self.apply_boundary_conditions()
+
+    def run_simulation_external_registers(
+        self,
+        position_register: list,
+        velocity_register: list,
+        sign_register: list,
+        boundary_ancillas: list,
+        iterations=1,
+        init=True,
+    ):
+        """
+        Run the simulation for a given number of iterations.
+
+        Args:
+            iterations: The number of iterations to run.
+            init: Whether to apply the initial conditions before running the simulation.
+        """
+        self._state.set_registers(
+            position_register, velocity_register, sign_register, boundary_ancillas
+        )
         if init:
             self.apply_initialization()
         for _ in range(iterations):
@@ -105,9 +146,9 @@ class LBMEngine:
                 continue
 
             self._is_out_boundary(d)
-            with control(self._state.boundary_ancillas[d]):
+            with self._state.boundary_ancillas[self._state.boundary_ancila_indexes[d]]:
                 # Flip the sign register if the position is out of bounds
-                self._state.sign_register[d].flip()
+                self._state.sign_register[self._state.boundary_ancila_indexes[d]].flip()
                 # Reflect the position (streaming correction step)
                 with self._state.sign_register[d]:
                     self._state.positions_register[d] += self._state.velocity_register[
@@ -123,6 +164,7 @@ class LBMEngine:
     #   Boundary Ancillas   #
     #########################
 
+    @auto_uncompute
     def _is_out_boundary(self, dim: int):
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
@@ -135,12 +177,10 @@ class LBMEngine:
         else:
             self._is_out_boundary_single_layer(dim)
 
+    @auto_uncompute
     def _is_out_boundary_single_layer(self, dim: int):
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
-
-        TODO: Take just first layer outside boundaries
-        - for bigger velocity sets (more than 1 in each dimension) has to more complex logic.
 
         Args:
             dim: The dimension to check.
@@ -148,12 +188,17 @@ class LBMEngine:
         with (
             self._state.positions_register[dim] == self._state.boundary_offsets[dim] - 1
         ):
-            self._state.boundary_ancillas[dim].flip()
+            self._state.boundary_ancillas[
+                self._state.boundary_ancila_indexes[dim]
+            ].flip()
         with self._state.positions_register[dim] == int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         ):
-            self._state.boundary_ancillas[dim].flip()
+            self._state.boundary_ancillas[
+                self._state.boundary_ancila_indexes[dim]
+            ].flip()
 
+    @auto_uncompute
     def _is_out_boundary_multi_layer(self, dim: int):
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
@@ -162,12 +207,17 @@ class LBMEngine:
             dim: The dimension to check.
         """
         with self._state.positions_register[dim] < self._state.boundary_offsets[dim]:
-            self._state.boundary_ancillas[dim].flip()
+            self._state.boundary_ancillas[
+                self._state.boundary_ancila_indexes[dim]
+            ].flip()
         with self._state.positions_register[dim] >= int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         ):
-            self._state.boundary_ancillas[dim].flip()
+            self._state.boundary_ancillas[
+                self._state.boundary_ancila_indexes[dim]
+            ].flip()
 
+    @auto_uncompute
     def _comes_from_boundary(self, dim: int):
         """
         Flips the boundary ancilla for the given dimension if the position is coming out of bounds.
@@ -191,7 +241,9 @@ class LBMEngine:
         # 1. Condition: At lower boundary AND moving towards it (sign is True/1)
         with self._state.positions_register[dim] <= self._state.velocity_register[dim]:
             with self._state.sign_register[dim]:
-                self._state.boundary_ancillas[dim].flip()
+                self._state.boundary_ancillas[
+                    self._state.boundary_ancila_indexes[dim]
+                ].flip()
 
         # 2. Condition: At upper boundary AND moving towards it (sign is False/0)
         upper_bound = int(
@@ -201,7 +253,9 @@ class LBMEngine:
             with self._state.positions_register[dim] == upper_bound - i:
                 with self._state.velocity_register[dim] >= i:
                     with ~self._state.sign_register[dim]:
-                        self._state.boundary_ancillas[dim].flip()
+                        self._state.boundary_ancillas[
+                            self._state.boundary_ancila_indexes[dim]
+                        ].flip()
 
     def _comes_from_boundary_single_layer(self, dim: int):
         """
@@ -215,11 +269,15 @@ class LBMEngine:
             self._state.boundary_offsets[dim]
         ):
             with self._state.sign_register[dim]:
-                self._state.boundary_ancillas[dim].flip()
+                self._state.boundary_ancillas[
+                    self._state.boundary_ancila_indexes[dim]
+                ].flip()
 
         # 2. Condition: At upper boundary AND moving towards it (sign is False/0)
         with self._state.positions_register[dim] == int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim] - 1
         ):
             with ~self._state.sign_register[dim]:
-                self._state.boundary_ancillas[dim].flip()
+                self._state.boundary_ancillas[
+                    self._state.boundary_ancila_indexes[dim]
+                ].flip()

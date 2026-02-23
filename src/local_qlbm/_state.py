@@ -65,43 +65,70 @@ class LBMState:
             for bc in self._boundary_conditions
         ]
 
-        self._boundary_ancillas = {}
+        # Initialize the ancilla indexes
+        self._boundary_ancilla_indexes = {}
+        idx = 0
         for i, bc in enumerate(self._boundary_conditions):
-            if bc == BoundaryCondition.BOUNCE_BACK:
-                self._boundary_ancillas[i] = QuantumBool()
+            if (
+                bc == BoundaryCondition.BOUNCE_BACK
+                or bc == BoundaryCondition.SIMPLE_SLIP
+            ):
+                self._boundary_ancilla_indexes[i] = idx
+                idx += 1
 
         # Initialize the grid
         # Positions
         self._positions_register_shape = self._grid_size + self._boundary_layers
-        self._positions_register = [
-            QuantumModulus(int(size)) for size in self._positions_register_shape
-        ]
+
+        # Velocities
+        self._init_velocity_properties()
+
+        # Initialize the registers
+        self._init_registers()
+
         self._position_register_sizes = np.array(
             [mod.size for mod in self._positions_register], dtype=int
         )
-
-        # Velocities
-        self._init_velocity_register()
-
         self._total_size = (
             np.sum(self._position_register_sizes)
             + (self._velocity_qubits_per_dim + 1) * self._dimensions
         )
 
-    def _init_velocity_register(self):
-        # sign register - 0/False-negative direction, 1/True-positive direction
-        self._sign_register = [QuantumBool() for _ in range(self._dimensions)]
+    def _init_velocity_properties(self):
+
         num_points = np.ceil(len(self._velocity_set.unique_coordinates) / 2)
         self._velocity_qubits_per_dim = int(np.ceil(np.log2(num_points)))
 
         if self._velocity_qubits_per_dim < 1:
             self._velocity_qubits_per_dim = 1
 
+    def _init_registers(self):
+        self._boundary_ancillas = []
+        for _ in self._boundary_ancilla_indexes.keys():
+            self._boundary_ancillas.append(QuantumBool())
+
+        self._positions_register = [
+            QuantumModulus(int(size)) for size in self._positions_register_shape
+        ]
+        # sign register - 0/False-negative direction, 1/True-positive direction
+        self._sign_register = [QuantumBool() for _ in range(self._dimensions)]
         # Initialize the velocity register
         self._velocity_register = [
             QuantumFloat(self._velocity_qubits_per_dim, signed=False)
             for _ in range(self._dimensions)
         ]
+
+    def set_registers(
+        self,
+        position_register: list,
+        velocity_register: list,
+        sign_register: list,
+        boundary_ancillas: list,
+    ):
+        self._positions_register = position_register
+        self._velocity_register = velocity_register
+        self._sign_register = sign_register
+        self._boundary_ancillas = boundary_ancillas
 
     ################################
     #   Initialization Functions   #
@@ -230,6 +257,10 @@ class LBMState:
         return self._boundary_ancillas
 
     @property
+    def boundary_ancila_indexes(self):
+        return self._boundary_ancilla_indexes
+
+    @property
     def total_size(self):
         return self._total_size
 
@@ -266,6 +297,44 @@ class LBMState:
         for coords, val in cells.items():
             grid[coords] = val
         return grid
+
+    def copy(self):
+        """
+        Returns a copy of the current state.
+        """
+        lbm_state = LBMState(
+            self._grid_size, self._velocity_set, self._boundary_conditions
+        )
+        if self._initial_bubble is not None:
+            lbm_state.set_initial_state(self._initial_bubble, self._initial_velocity)
+        return lbm_state
+
+    def get_clean_registers(self):
+        """
+        Returns freshly initialized registers tuple of the
+        position, sign, velocity, and boundary ancilla registers.
+        """
+        vel = []
+        sign = []
+        anc = []
+        anc = []
+        for _ in self._boundary_ancilla_indexes.keys():
+            anc.append(QuantumBool())
+
+        pos = [QuantumModulus(int(size)) for size in self._positions_register_shape]
+        # sign register - 0/False-negative direction, 1/True-positive direction
+        sign = [QuantumBool() for _ in range(self._dimensions)]
+        # Initialize the velocity register
+        vel = [
+            QuantumFloat(self._velocity_qubits_per_dim, signed=False)
+            for _ in range(self._dimensions)
+        ]
+        return (
+            pos,
+            sign,
+            vel,
+            anc,
+        )
 
     ###################
     #   Coordinates   #

@@ -110,6 +110,40 @@ class LBMGrid:
             roi, simulation_iterations, eps, shots, backend
         )
 
+    def estimate_region_density(
+        self,
+        roi: RegionOfInterest,
+        simulation_iterations: int = 1,
+        eps: float = 0.01,
+        alpha: float = 0.05,
+        shots: int = 1000,
+        backend=None,
+    ) -> float:
+        """
+        1. Estimates total density (f) in ROI using IQAE.
+        2. Amplifies ROI to make internal distribution measurable.
+
+        Args:
+            roi: RegionOfInterest object.
+            eps: The desired accuracy of the estimate.
+            alpha: The desired confidence level of the estimate.
+            shots: Number of shots to measure.
+            backend: The backend to use for the simulation.
+
+        Returns:
+            The estimated density of the region.
+        """
+        return float(
+            self._analyzer.estimate_region_density(
+                roi=roi,
+                simulation_iterations=simulation_iterations,
+                eps=eps,
+                alpha=alpha,
+                shots=shots,
+                backend=backend,
+            )
+        )
+
     ####################
     #    Properties    #
     ####################
