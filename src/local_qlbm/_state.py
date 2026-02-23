@@ -56,10 +56,14 @@ class LBMState:
                 f"Boundary conditions must be specified for each dimension. Got {len(boundary_conditions)} conditions for {self._dimensions} dimensions."
             )
         self._boundary_conditions = boundary_conditions
-        self._boundary_layers = np.array(
-            [layer.aditional_layers for layer in boundary_conditions], int
-        )
-        self._boundary_offsets = [bc.offset for bc in self._boundary_conditions]
+        self._boundary_layers = [
+            self._velocity_set.aditional_layers if bc.need_offset else 0
+            for bc in self._boundary_conditions
+        ]
+        self._boundary_offsets = [
+            self._velocity_set.offset if bc.need_offset else 0
+            for bc in self._boundary_conditions
+        ]
 
         self._boundary_ancillas = {}
         for i, bc in enumerate(self._boundary_conditions):

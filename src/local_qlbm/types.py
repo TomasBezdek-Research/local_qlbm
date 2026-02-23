@@ -25,18 +25,23 @@ class VelocitySet(enum.Enum):
     def unique_coordinates(self) -> list:
         return self.value[2]
 
+    @property
+    def offset(self) -> int:
+        return self.value[2][-1]
+
+    @property
+    def aditional_layers(self) -> int:
+        return 2 * self.value[2][-1]
+
 
 class BoundaryCondition(enum.Enum):
     PERIODIC = 0
     BOUNCE_BACK = 1
+    SIMPLE_SLIP = 2
 
     @property
-    def aditional_layers(self) -> int:
-        return 2 * self.value
-
-    @property
-    def offset(self) -> int:
-        return self.value
+    def need_offset(self) -> bool:
+        return self.value > 0
 
 
 @dataclass(frozen=True)
