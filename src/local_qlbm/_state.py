@@ -1,3 +1,4 @@
+import enum
 from typing import Dict
 
 import numpy as np
@@ -12,6 +13,13 @@ from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path
 )
 
 from .types import BoundaryCondition, RegionOfInterest, VelocitySet
+
+
+class BCCombination(enum.Enum):
+    PERIODIC = enum.auto()
+    BB = enum.auto()
+    SLIP = enum.auto()
+    BB_AND_SLIP = enum.auto()
 
 
 class LBMState:
@@ -64,11 +72,28 @@ class LBMState:
             self._velocity_set.offset if bc.need_offset else 0
             for bc in self._boundary_conditions
         ]
+        active_bcs = {
+            bc for bc in boundary_conditions if bc != BoundaryCondition.PERIODIC
+        }
+        has_bb = BoundaryCondition.BOUNCE_BACK in active_bcs
+        has_slip = BoundaryCondition.SIMPLE_SLIP in active_bcs
+
+        if has_bb and has_slip:
+            self._bc_combination = BCCombination.BB_AND_SLIP
+        elif has_bb:
+            self._bc_combination = BCCombination.BB
+        elif has_slip:
+            self._bc_combination = BCCombination.SLIP
+        else:
+            self._bc_combination = BCCombination.PERIODIC
 
         # Initialize the ancilla indexes
         self._boundary_ancilla_indexes = {}
+        self._bb_boundary_ancilla_indexes = {}
         idx = 0
         for i, bc in enumerate(self._boundary_conditions):
+            if bc == BoundaryCondition.BOUNCE_BACK:
+                self._bb_boundary_ancilla_indexes[i] = idx
             if (
                 bc == BoundaryCondition.BOUNCE_BACK
                 or bc == BoundaryCondition.SIMPLE_SLIP
@@ -257,8 +282,12 @@ class LBMState:
         return self._boundary_ancillas
 
     @property
-    def boundary_ancila_indexes(self):
+    def boundary_ancilla_indexes(self):
         return self._boundary_ancilla_indexes
+
+    @property
+    def bb_boundary_ancilla_indexes(self):
+        return self._bb_boundary_ancilla_indexes
 
     @property
     def total_size(self):
@@ -279,6 +308,10 @@ class LBMState:
     @property
     def initial_velocity(self):
         return self._initial_velocity
+
+    @property
+    def bc_combination(self):
+        return self._bc_combination
 
     ##################
     #   Utilities    #
@@ -349,7 +382,7 @@ class LBMState:
         Returns:
             Coordinates transformed to register index.
         """
-        return user_coord + self._boundary_conditions[dimension].offset
+        return user_coord + self._boundary_offsets[dimension]
 
     def encoded_to_user_coord(self, encoded_coord, dimension):
         """Converts register index back to user 0-indexed coord.
@@ -361,7 +394,7 @@ class LBMState:
         Returns:
             Coordinates transformed to user 0-indexed coordinate.
         """
-        return encoded_coord - self._boundary_conditions[dimension].offset
+        return encoded_coord - self._boundary_offsets[dimension]
 
     def get_encoded_bounds(self, user_bounds):
         """Converts list of user (min, max) tuples to encoded indices.

@@ -1,7 +1,12 @@
 import numpy as np
-from qrisp import auto_uncompute, control, prepare
+from qrisp import (
+    QuantumBool,
+    auto_uncompute,
+    mcx,
+    prepare,
+)
 
-from ._state import LBMState
+from ._state import BCCombination, LBMState
 from .types import BoundaryCondition
 
 
@@ -138,17 +143,37 @@ class LBMEngine:
     @auto_uncompute
     def apply_boundary_conditions(self):
         """
-        Check if the positions are within the grid boundaries.
-        Flip the sign register if the position is out of bounds.
+        Aplly the boundary conditions to the positions.
+        """
+        if self._state.bc_combination == BCCombination.PERIODIC:
+            return
+
+        if self._state.bc_combination == BCCombination.SLIP:
+            self._apply_bc_slip()
+            return
+
+        if self._state.bc_combination == BCCombination.BB:
+            self._apply_bc_bb()
+            return
+
+        if self._state.bc_combination == BCCombination.BB_AND_SLIP:
+            self._apply_bc_bb_slip()
+            return
+
+    @auto_uncompute
+    def _apply_bc_slip(self):
+        """
+        Apply the boundary conditions to the positions.
+        Used when if some BC is Slip and rest Slip or Periodic.
         """
         for d in range(self._state.dimensions):
             if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
                 continue
 
             self._is_out_boundary(d)
-            with self._state.boundary_ancillas[self._state.boundary_ancila_indexes[d]]:
+            with self._state.boundary_ancillas[self._state.boundary_ancilla_indexes[d]]:
                 # Flip the sign register if the position is out of bounds
-                self._state.sign_register[self._state.boundary_ancila_indexes[d]].flip()
+                self._state.sign_register[d].flip()
                 # Reflect the position (streaming correction step)
                 with self._state.sign_register[d]:
                     self._state.positions_register[d] += self._state.velocity_register[
@@ -158,6 +183,124 @@ class LBMEngine:
                     self._state.positions_register[d] -= self._state.velocity_register[
                         d
                     ]
+            self._comes_from_boundary(d)
+
+    @auto_uncompute
+    def _apply_bc_bb(self):
+        """
+        Apply the boundary conditions to the positions.
+        Used when if some BC is Bounce Back and rest Bounce Back or Periodic.
+        """
+        for d in range(self._state.dimensions):
+            if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
+                continue
+            self._is_out_boundary(d)
+
+        apply_bb = QuantumBool()
+        apply_bb.flip()
+        mcx(
+            [anc for anc in self._state.boundary_ancillas],
+            apply_bb,
+            method="gray",
+            ctrl_state=0,
+        )
+        with apply_bb:
+            # if False:
+            for d in range(self._state.dimensions):
+                # Flip the sign register if the position is out of bounds
+                self._state.sign_register[d].flip()
+                # Reflect the position (streaming correction step)
+                with self._state.sign_register[d]:
+                    self._state.positions_register[d] += self._state.velocity_register[
+                        d
+                    ]
+                with ~self._state.sign_register[d]:
+                    self._state.positions_register[d] -= self._state.velocity_register[
+                        d
+                    ]
+        apply_bb.uncompute()
+
+        for d in range(self._state.dimensions):
+            if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
+                continue
+            self._comes_from_boundary(d)
+
+    @auto_uncompute
+    def _apply_bc_bb_slip(self):
+        """
+        Apply the boundary conditions to the positions.
+        Used when if some BC is Bounce Back, some Slip and rest Bounce Back, Slip or Periodic.
+        """
+        for d in range(self._state.dimensions):
+            if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
+                continue
+            self._is_out_boundary(d)
+
+        apply_bb = QuantumBool()
+        apply_bb.flip()
+        mcx(
+            [
+                self._state.boundary_ancillas[idx]
+                for idx in self._state.bb_boundary_ancilla_indexes.values()
+            ],
+            apply_bb,
+            method="gray",
+            ctrl_state=0,
+        )
+        for d in range(self._state.dimensions):
+            if (
+                self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC
+                or self._state.boundary_conditions[d] == BoundaryCondition.BOUNCE_BACK
+            ):
+                with apply_bb:
+                    # Flip the sign register if the position is out of bounds
+                    self._state.sign_register[
+                        self._state.boundary_ancilla_indexes[d]
+                    ].flip()
+                    # Reflect the position (streaming correction step)
+                    with self._state.sign_register[d]:
+                        self._state.positions_register[d] += (
+                            self._state.velocity_register[d]
+                        )
+                    with ~self._state.sign_register[d]:
+                        self._state.positions_register[d] -= (
+                            self._state.velocity_register[d]
+                        )
+
+            if self._state.boundary_conditions[d] == BoundaryCondition.SIMPLE_SLIP:
+                apply_slip = QuantumBool()
+                apply_slip.flip()
+                mcx(
+                    [
+                        apply_bb,
+                        self._state.boundary_ancillas[
+                            self._state.boundary_ancilla_indexes[d]
+                        ],
+                    ],
+                    apply_slip,
+                    method="gray",
+                    ctrl_state=0,
+                )
+                with apply_slip:
+                    # Flip the sign register if the position is out of bounds
+                    self._state.sign_register[
+                        self._state.boundary_ancilla_indexes[d]
+                    ].flip()
+                    # Reflect the position (streaming correction step)
+                    with self._state.sign_register[d]:
+                        self._state.positions_register[d] += (
+                            self._state.velocity_register[d]
+                        )
+                    with ~self._state.sign_register[d]:
+                        self._state.positions_register[d] -= (
+                            self._state.velocity_register[d]
+                        )
+                apply_slip.uncompute()
+        apply_bb.uncompute()
+
+        for d in range(self._state.dimensions):
+            if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
+                continue
             self._comes_from_boundary(d)
 
     #########################
@@ -172,6 +315,9 @@ class LBMEngine:
         Args:
             dim: The dimension to check.
         """
+        if dim not in self._state.boundary_ancilla_indexes:
+            return
+
         if self._state.boundary_offsets[dim] > 1:
             self._is_out_boundary_multi_layer(dim)
         else:
@@ -185,17 +331,17 @@ class LBMEngine:
         Args:
             dim: The dimension to check.
         """
-        with (
-            self._state.positions_register[dim] == self._state.boundary_offsets[dim] - 1
+        with self._state.positions_register[dim] == (
+            self._state.boundary_offsets[dim] - 1
         ):
             self._state.boundary_ancillas[
-                self._state.boundary_ancila_indexes[dim]
+                self._state.boundary_ancilla_indexes[dim]
             ].flip()
         with self._state.positions_register[dim] == int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         ):
             self._state.boundary_ancillas[
-                self._state.boundary_ancila_indexes[dim]
+                self._state.boundary_ancilla_indexes[dim]
             ].flip()
 
     @auto_uncompute
@@ -208,13 +354,13 @@ class LBMEngine:
         """
         with self._state.positions_register[dim] < self._state.boundary_offsets[dim]:
             self._state.boundary_ancillas[
-                self._state.boundary_ancila_indexes[dim]
+                self._state.boundary_ancilla_indexes[dim]
             ].flip()
         with self._state.positions_register[dim] >= int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         ):
             self._state.boundary_ancillas[
-                self._state.boundary_ancila_indexes[dim]
+                self._state.boundary_ancilla_indexes[dim]
             ].flip()
 
     @auto_uncompute
@@ -225,6 +371,8 @@ class LBMEngine:
         Args:
             dim: The dimension to check.
         """
+        if dim not in self._state.boundary_ancilla_indexes:
+            return
         if self._state.boundary_offsets[dim] > 1:
             self._comes_from_boundary_multi_layer(dim)
         else:
@@ -238,14 +386,14 @@ class LBMEngine:
         Args:
             dim: The dimension to check.
         """
-        # 1. Condition: At lower boundary AND moving towards it (sign is True/1)
+        # 1. Condition: At lower boundary AND moving from it (sign is True/1)
         with self._state.positions_register[dim] <= self._state.velocity_register[dim]:
             with self._state.sign_register[dim]:
                 self._state.boundary_ancillas[
-                    self._state.boundary_ancila_indexes[dim]
+                    self._state.boundary_ancilla_indexes[dim]
                 ].flip()
 
-        # 2. Condition: At upper boundary AND moving towards it (sign is False/0)
+        # 2. Condition: At upper boundary AND moving from it (sign is False/0)
         upper_bound = int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         )
@@ -254,7 +402,7 @@ class LBMEngine:
                 with self._state.velocity_register[dim] >= i:
                     with ~self._state.sign_register[dim]:
                         self._state.boundary_ancillas[
-                            self._state.boundary_ancila_indexes[dim]
+                            self._state.boundary_ancilla_indexes[dim]
                         ].flip()
 
     def _comes_from_boundary_single_layer(self, dim: int):
@@ -264,20 +412,20 @@ class LBMEngine:
         Args:
             dim: The dimension to check.
         """
-        # 1. Condition: At lower boundary AND moving towards it (sign is True/1)
+        # 1. Condition: At lower boundary AND moving from it (sign is True/1)
         with self._state.positions_register[dim] == int(
             self._state.boundary_offsets[dim]
         ):
             with self._state.sign_register[dim]:
                 self._state.boundary_ancillas[
-                    self._state.boundary_ancila_indexes[dim]
+                    self._state.boundary_ancilla_indexes[dim]
                 ].flip()
 
-        # 2. Condition: At upper boundary AND moving towards it (sign is False/0)
+        # 2. Condition: At upper boundary AND moving from it (sign is False/0)
         with self._state.positions_register[dim] == int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim] - 1
         ):
             with ~self._state.sign_register[dim]:
                 self._state.boundary_ancillas[
-                    self._state.boundary_ancila_indexes[dim]
+                    self._state.boundary_ancilla_indexes[dim]
                 ].flip()
