@@ -302,12 +302,12 @@ class LBMAnalyzer:
             A QuantumBool representing the subgrid.
         """
         full_condition = (self._state.positions_register[0] >= bounds[0][0]) & (
-            self._state.positions_register[0] <= bounds[0][1]
+            self._state.positions_register[0] < bounds[0][1]
         )
 
         for d in range(1, self._state.dimensions):
             full_condition &= (self._state.positions_register[d] >= bounds[d][0]) & (
-                self._state.positions_register[d] <= bounds[d][1]
+                self._state.positions_register[d] < bounds[d][1]
             )
 
         # Use the control environment. Qrisp handles the temporary bits

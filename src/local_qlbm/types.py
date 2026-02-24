@@ -58,10 +58,29 @@ class RegionOfInterest:
 
     @classmethod
     def from_bounds(cls, bounds):
+        """
+        Creates a RegionOfInterest from a list of tuples representing the bounds.
+
+        Args:
+            bounds (list): A list of tuples representing the bounds. Example: [(2, 5), (1, 3)].
+            Lower bound is inclusive, Upper bound is exclusive.
+
+        Returns:
+            RegionOfInterest: A RegionOfInterest object.
+        """
         return cls(bounds=bounds)
 
     @classmethod
     def from_points(cls, points):
+        """
+        Creates a RegionOfInterest from a list of lists representing the points.
+
+        Args:
+            points (list): A list of lists representing the points. Example: [[2, 3], [5, 7]]
+
+        Returns:
+            RegionOfInterest: A RegionOfInterest object.
+        """
         return cls(points_list=points)
 
     @property
@@ -84,7 +103,7 @@ class RegionOfInterest:
         """
         if self.is_subgrid:
             # Check if coords are within the n-dimensional bounding box
-            return all(low <= c <= high for c, (low, high) in zip(coords, self.bounds))
+            return all(low <= c < high for c, (low, high) in zip(coords, self.bounds))
         else:
             # Check if the coordinate exists in the discrete point list
             # We convert to list if points_list is a list of lists

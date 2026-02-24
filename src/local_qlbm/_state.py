@@ -331,6 +331,20 @@ class LBMState:
             grid[coords] = val
         return grid
 
+    def physical_density_to_numpy(self, physical_density: Dict) -> np.ndarray:
+        """Converts the 'cells' dict from analyze_region into a dense NumPy array.
+
+        Args:
+            analysis_results: The output of analyze_region.
+
+        Returns:
+            A NumPy array with the same shape as the grid.
+        """
+        grid = np.zeros(self._grid_size)
+        for coords, val in physical_density.items():
+            grid[coords] = val
+        return grid
+
     def copy(self):
         """
         Returns a copy of the current state.

@@ -50,6 +50,10 @@ class LBMEngine:
         Applies the gates to set the registers to t=0.
         This is called internally by IQAE/AA.
         """
+        if not self._state.initial_bubble.is_subgrid:
+            raise ValueError(
+                "Initial bubble must be a subgrid. Use set_initial_state() to set the initial state."
+            )
         # 1. Prepare Positions
         encoded_bounds = self._state.get_encoded_bounds(
             self._state.initial_bubble.bounds
@@ -59,7 +63,7 @@ class LBMEngine:
             num_states = 2 ** self._state.positions_register[d].size
             statevector = np.zeros(num_states)
             start, end = encoded_bounds[d]
-            statevector[start : end + 1] = 1.0
+            statevector[start:end] = 1.0
             statevector /= np.linalg.norm(statevector)
             prepare(self._state.positions_register[d], statevector)
 
