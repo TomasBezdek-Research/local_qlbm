@@ -144,6 +144,9 @@ class LBMGrid:
             )
         )
 
+    def fast_region_density_estimate(self, roi: RegionOfInterest):
+        return self._analyzer.fast_region_density_estimate(roi)
+
     ####################
     #    Properties    #
     ####################

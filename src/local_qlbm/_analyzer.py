@@ -6,6 +6,7 @@ from qrisp import (
     amplitude_amplification,
     auto_uncompute,
     control,
+    mcx,
     z,
 )
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
@@ -275,7 +276,17 @@ class LBMAnalyzer:
             iter=amplification_iterations,
         )
 
-    @auto_uncompute
+    def fast_region_density_estimate(
+        self, roi: RegionOfInterest, shots=None, backend=None
+    ):
+        """
+        Estimates the density of a region using the fast method.
+        """
+        state_roi = self._state.encode_roi(roi)
+        in_region = QuantumBool()
+        self._get_region_oracle(roi=state_roi, target_qubit=in_region)
+        return in_region.get_measurement(shots=shots, backend=backend)
+
     def _get_region_oracle(self, roi: RegionOfInterest, target_qubit: QuantumBool):
         """
         Returns the oracle for the specified region.
@@ -301,19 +312,20 @@ class LBMAnalyzer:
         Returns:
             A QuantumBool representing the subgrid.
         """
-        full_condition = (self._state.positions_register[0] >= bounds[0][0]) & (
-            self._state.positions_register[0] < bounds[0][1]
-        )
+        in_subrid_ancillas = [QuantumBool() for _ in range(self._state.dimensions)]
 
-        for d in range(1, self._state.dimensions):
-            full_condition &= (self._state.positions_register[d] >= bounds[d][0]) & (
-                self._state.positions_register[d] < bounds[d][1]
-            )
+        for d in range(self._state.dimensions):
+            with self._state.positions_register[d] < bounds[d][0]:
+                in_subrid_ancillas[d].flip()
+            with self._state.positions_register[d] >= bounds[d][1]:
+                in_subrid_ancillas[d].flip()
+            in_subrid_ancillas[d].flip()
 
         # Use the control environment. Qrisp handles the temporary bits
         # efficiently here without creating the DAG cycle.
-        with control(full_condition):
-            target_qubit.flip()
+        mcx(in_subrid_ancillas, target_qubit, method="gray")
+        # for d in range(self._state.dimensions):
+        # in_subrid_ancillas[d].uncompute()
 
     @auto_uncompute
     def _get_multi_point_oracle(self, points_list, target_qubit):

@@ -1,5 +1,3 @@
-from qiskit.circuit.library.standard_gates.ry import numpy
-
 from local_qlbm.grid import LBMGrid
 from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
 
@@ -29,9 +27,17 @@ if __name__ == "__main__":
 
     # grid.apply_conditions()
 
-    grid.run_simulation(iterations=1, init=True)
-    mes = grid.measure_density()
-    np_res = grid.physical_density_to_numpy(mes)
+    grid.run_simulation(iterations=5, init=True)
+    # mes = grid.measure_density()
+    roi = RegionOfInterest.from_bounds(
+        bounds=[
+            (0, 4),
+            (2, 3),
+        ]
+    )
+    den = grid.fast_region_density_estimate(roi)
+    print(den)
+    # np_res = grid.physical_density_to_numpy(mes)
 
     def plot_res(numpy_results):
         import matplotlib.pyplot as plt
@@ -52,6 +58,6 @@ if __name__ == "__main__":
         )
         plt.show()
 
-    print(mes)
-    print(np_res)
-    plot_res(np_res)
+    # print(mes)
+    # print(np_res)
+    # plot_res(np_res)
