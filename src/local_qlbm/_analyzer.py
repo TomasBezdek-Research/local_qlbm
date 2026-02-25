@@ -5,6 +5,8 @@ from qrisp import (
     IQAE,
     amplitude_amplification,
     auto_uncompute,
+    control,
+    mcx,
     z,
 )
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
@@ -139,34 +141,53 @@ class LBMAnalyzer:
         Returns:
             Estimated density of the region.
         """
-        # 1. Create a fresh indicator qubit (the 'good state' marker)
-        target_qubit = QuantumBool()
 
-        # 2. Gather all registers involved.
-        # IQAE will treat the LAST element as the target indicator.
-        iqae_vars = self._state.positions_register + [target_qubit]
+        # 1. Create an init function
+        def qargs():
+            pos, sign, vel, anc = self._state.get_clean_registers()
+            self._engine.apply_initialization_external_registers(
+                position_register=pos,
+                sign_register=sign,
+                velocity_register=vel,
+                boundary_ancillas=anc,
+            )
+            target_qubit = QuantumBool()
+            # Use * to flatten the lists into one long tuple
+            return (*pos, *sign, *vel, *anc, target_qubit)
 
-        # 3. Define the IQAE state preparation wrapper
-        def iqae_wrapper(*args):
-            # Extract the target bit (the last argument)
-            target = args[-1]
+        # 2. Define the IQAE state preparation wrapper
+        def iqae_wrapper(*flat_args):
+            d = self._state.dimensions
+            pos = list(flat_args[0:d])
+            sign = list(flat_args[d : 2 * d])
+            vel = list(flat_args[2 * d : 3 * d])
+            anc = list(flat_args[3 * d : -1])
+            target = flat_args[-1]
 
             # Step A: Run your simulation logic (Initialization + Streaming + BC)
-            self._engine.run_simulation(iterations=simulation_iterations)
+            self._engine.run_simulation_external_registers(
+                position_register=pos,
+                velocity_register=vel,
+                sign_register=sign,
+                boundary_ancillas=anc,
+                iterations=simulation_iterations,
+                init=False,
+            )
 
             # Step B: Apply the oracle logic
             # We compute the condition and XOR it onto the target qubit.
 
-            region_oracle = self._get_region_oracle(roi=roi)
-            target ^= region_oracle
+            # region_oracle = self._get_region_oracle(roi=roi)
+            # target ^= region_oracle
+            self._get_region_oracle(roi=roi, target_qubit=target)
 
-        # 4. Execute IQAE
+        # 3. Execute IQAE
         # This returns a float representing the density in the subgrid
         mes_kwargs = {"backend": backend}
         if shots is not None:
             mes_kwargs["shots"] = shots
         return IQAE(
-            iqae_vars,
+            qargs,
             iqae_wrapper,
             eps=eps,
             alpha=alpha,
@@ -238,7 +259,9 @@ class LBMAnalyzer:
         def oracle_function(*pos_regs):
             # We re-evaluate the oracle based on the NEW positions
             # created by state_function
-            condition = self._get_region_oracle(roi=roi)
+            condition = QuantumBool()
+            # condition = self._get_region_oracle(roi=roi)
+            self._get_region_oracle(roi=roi, target_qubit=condition)
 
             # Apply the phase flip required for AA
             z(condition)
@@ -253,8 +276,18 @@ class LBMAnalyzer:
             iter=amplification_iterations,
         )
 
-    @auto_uncompute
-    def _get_region_oracle(self, roi: RegionOfInterest) -> QuantumBool:
+    def fast_region_density_estimate(
+        self, roi: RegionOfInterest, shots=None, backend=None
+    ):
+        """
+        Estimates the density of a region using the fast method.
+        """
+        state_roi = self._state.encode_roi(roi)
+        in_region = QuantumBool()
+        self._get_region_oracle(roi=state_roi, target_qubit=in_region)
+        return in_region.get_measurement(shots=shots, backend=backend)
+
+    def _get_region_oracle(self, roi: RegionOfInterest, target_qubit: QuantumBool):
         """
         Returns the oracle for the specified region.
 
@@ -265,11 +298,10 @@ class LBMAnalyzer:
             A QuantumBool representing the region.
         """
         if roi.is_subgrid:
-            return self._get_subgrid_oracle(roi.bounds)
-        return self._get_multi_point_oracle(roi.points_list)
+            return self._get_subgrid_oracle(roi.bounds, target_qubit)
+        return self._get_multi_point_oracle(roi.points_list, target_qubit)
 
-    @auto_uncompute
-    def _get_subgrid_oracle(self, bounds) -> QuantumBool:
+    def _get_subgrid_oracle(self, bounds, target_qubit):
         """
         Returns the oracle for the specified subgrid.
 
@@ -280,20 +312,23 @@ class LBMAnalyzer:
         Returns:
             A QuantumBool representing the subgrid.
         """
-        # Start with a condition for the first dimension
-        res = (self._state.positions_register[0] >= bounds[0][0]) & (
-            self._state.positions_register[0] <= bounds[0][1]
-        )
+        in_subrid_ancillas = [QuantumBool() for _ in range(self._state.dimensions)]
 
-        # Chain the other dimensions
-        for d in range(1, self._state.dimensions):
-            res &= self._state.positions_register[d] >= bounds[d][0]
-            res &= self._state.positions_register[d] <= bounds[d][1]
+        for d in range(self._state.dimensions):
+            with self._state.positions_register[d] < bounds[d][0]:
+                in_subrid_ancillas[d].flip()
+            with self._state.positions_register[d] >= bounds[d][1]:
+                in_subrid_ancillas[d].flip()
+            in_subrid_ancillas[d].flip()
 
-        return res
+        # Use the control environment. Qrisp handles the temporary bits
+        # efficiently here without creating the DAG cycle.
+        mcx(in_subrid_ancillas, target_qubit, method="gray")
+        # for d in range(self._state.dimensions):
+        # in_subrid_ancillas[d].uncompute()
 
     @auto_uncompute
-    def _get_multi_point_oracle(self, points_list) -> QuantumBool:
+    def _get_multi_point_oracle(self, points_list, target_qubit):
         """
         Returns the oracle for the specified region.
 
@@ -312,11 +347,8 @@ class LBMAnalyzer:
             return res
 
         # Combine all points with OR logic
-        final_oracle = check_single_point(points_list[0])
-        for point in points_list[1:]:
-            final_oracle |= check_single_point(point)
-
-        return final_oracle
+        for point in points_list:
+            target_qubit |= check_single_point(point)
 
     ##################
     #   Utilities    #

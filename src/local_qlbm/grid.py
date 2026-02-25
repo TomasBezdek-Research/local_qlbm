@@ -110,6 +110,43 @@ class LBMGrid:
             roi, simulation_iterations, eps, shots, backend
         )
 
+    def estimate_region_density(
+        self,
+        roi: RegionOfInterest,
+        simulation_iterations: int = 1,
+        eps: float = 0.01,
+        alpha: float = 0.05,
+        shots: int = 1000,
+        backend=None,
+    ) -> float:
+        """
+        1. Estimates total density (f) in ROI using IQAE.
+        2. Amplifies ROI to make internal distribution measurable.
+
+        Args:
+            roi: RegionOfInterest object.
+            eps: The desired accuracy of the estimate.
+            alpha: The desired confidence level of the estimate.
+            shots: Number of shots to measure.
+            backend: The backend to use for the simulation.
+
+        Returns:
+            The estimated density of the region.
+        """
+        return float(
+            self._analyzer.estimate_region_density(
+                roi=roi,
+                simulation_iterations=simulation_iterations,
+                eps=eps,
+                alpha=alpha,
+                shots=shots,
+                backend=backend,
+            )
+        )
+
+    def fast_region_density_estimate(self, roi: RegionOfInterest):
+        return self._analyzer.fast_region_density_estimate(roi)
+
     ####################
     #    Properties    #
     ####################
@@ -152,6 +189,24 @@ class LBMGrid:
     @property
     def total_size(self):
         return self._state.total_size
+
+    ######################
+    #   Visualization    #
+    ######################
+    def results_to_numpy(self, simulation_results):
+        return self._state.results_to_numpy(simulation_results)
+
+    def physical_density_to_numpy(self, physical_density):
+        """
+        Converts the 'cells' dict from analyze_region into a dense NumPy array.
+
+        Args:
+            physical_density: The dictionary of physical density.
+
+        Returns:
+            A NumPy array with the same shape as the grid.
+        """
+        return self._state.physical_density_to_numpy(physical_density)
 
     ################
     #   Display    #
