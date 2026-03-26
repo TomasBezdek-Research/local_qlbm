@@ -7,15 +7,15 @@ if __name__ == "__main__":
         velocity_set=VelocitySet.D3Q27,
         boundary_conditions=[
             BoundaryCondition.PERIODIC,
-            BoundaryCondition.PERIODIC,
+            BoundaryCondition.SIMPLE_SLIP,
             BoundaryCondition.BOUNCE_BACK,
         ],
     )
     initial_bubble = RegionOfInterest.from_bounds(
         bounds=[
-            (0, 0),
-            (0, 0),
-            (0, 0),
+            (0, 1),
+            (0, 1),
+            (0, 1),
         ]
     )
     initial_velocity = [1, 1, 0]

@@ -1,11 +1,17 @@
 [project]
 name = "local-qlbm"
 version = "0.1.0"
-description = "Add your description here"
+description = "A specialized Local Quantum Lattice Boltzmann (QLBM) solver for the Pure Advection Equation, implemented using the Qrisp framework."
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Tomas Bezdek", email = "tomas.bezdek@tum.de" },
+    { name = "Tobias Koeppl", email = "" },
+]
+
 dependencies = [
-    "qrisp>=0.7.17",
+    "pyevtk>=1.6.0",
+    "qrisp>=0.8",
 ]
 
 [build-system]

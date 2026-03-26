@@ -142,6 +142,7 @@ class LBMState:
             QuantumFloat(self._velocity_qubits_per_dim, signed=False)
             for _ in range(self._dimensions)
         ]
+        self._oracle_ancillas: list | None = None
 
     def set_registers(
         self,
@@ -149,11 +150,13 @@ class LBMState:
         velocity_register: list,
         sign_register: list,
         boundary_ancillas: list,
+        oracle_ancillas: list | None = None,
     ):
         self._positions_register = position_register
         self._velocity_register = velocity_register
         self._sign_register = sign_register
         self._boundary_ancillas = boundary_ancillas
+        self._oracle_ancillas = oracle_ancillas
 
     ################################
     #   Initialization Functions   #
@@ -356,7 +359,7 @@ class LBMState:
             lbm_state.set_initial_state(self._initial_bubble, self._initial_velocity)
         return lbm_state
 
-    def get_clean_registers(self):
+    def get_clean_registers(self, create_oracle_ancillas=False):
         """
         Returns freshly initialized registers tuple of the
         position, sign, velocity, and boundary ancilla registers.
@@ -364,7 +367,7 @@ class LBMState:
         vel = []
         sign = []
         anc = []
-        anc = []
+        oracle_anc = None
         for _ in self._boundary_ancilla_indexes.keys():
             anc.append(QuantumBool())
 
@@ -376,11 +379,16 @@ class LBMState:
             QuantumFloat(self._velocity_qubits_per_dim, signed=False)
             for _ in range(self._dimensions)
         ]
+
+        if create_oracle_ancillas:
+            oracle_anc = [QuantumBool() for _ in range(self._dimensions)]
+
         return (
             pos,
             sign,
             vel,
             anc,
+            oracle_anc,
         )
 
     ###################
