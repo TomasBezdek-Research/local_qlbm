@@ -7,7 +7,7 @@ if __name__ == "__main__":
         velocity_set=VelocitySet.D3Q27,
         boundary_conditions=[
             BoundaryCondition.PERIODIC,
-            BoundaryCondition.PERIODIC,
+            BoundaryCondition.SIMPLE_SLIP,
             BoundaryCondition.BOUNCE_BACK,
         ],
     )

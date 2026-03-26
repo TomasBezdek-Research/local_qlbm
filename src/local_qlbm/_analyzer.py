@@ -5,7 +5,6 @@ from qrisp import (
     IQAE,
     amplitude_amplification,
     auto_uncompute,
-    control,
     mcx,
     z,
 )
@@ -46,7 +45,8 @@ class LBMAnalyzer:
         roi: RegionOfInterest,
         simulation_iterations: int = 1,
         eps: float = 0.01,
-        shots: int = 1000,
+        alpha: float = 0.05,
+        shots: int | None = None,
         backend=None,
     ) -> Dict:
         """
@@ -65,15 +65,14 @@ class LBMAnalyzer:
                 total_density: The total density of the region.
                 cells: A dict of the cells in the region.
         """
-        # 1. Encode ROI for internal ghost-layer logic
-        encoded_roi = self._state.encode_roi(roi)
 
-        # 2. Get the high-precision "Mass" of the region
+        # Get the high-precision "Mass" of the region
         print("Phase 1: Estimating total density (f)...")
         f = self.estimate_region_density(
-            roi=encoded_roi,
+            roi=roi,
             simulation_iterations=simulation_iterations,
             eps=eps,
+            alpha=alpha,
             shots=shots,
             backend=backend,
         )
@@ -82,19 +81,19 @@ class LBMAnalyzer:
             print("Density is zero; skipping amplification.")
             return {"total_density": 0, "cells": {}}
 
-        # 3. Amplify so the shots actually land in the ROI
+        # Amplify so the shots actually land in the ROI
         print(f"Phase 2: Amplifying region (f={f:.4f})...")
         self.boost_region(
             region_density=f,
-            roi=encoded_roi,
+            roi=roi,
             simulation_iterations=simulation_iterations,
         )
 
-        # 4. Measure physical density
+        # Measure physical density
         # Note: This dict only contains cells that were actually measured (shots > 0)
         counts = self._state.get_physical_density(shots=shots, backend=backend)
 
-        # 5. Filter counts to only include the ROI
+        # Filter counts to only include the ROI
         # (in case some probability leaked or noise occurred)
         roi_counts = {}
         total_measured_prob = 0
@@ -104,7 +103,7 @@ class LBMAnalyzer:
                 roi_counts[coords] = prob
                 total_measured_prob += prob
 
-        # 6. Rescale: (Measured Cell Prob / Total Measured Prob) * f
+        # Rescale: (Measured Cell Prob / Total Measured Prob) * f
         # This makes the sum of roi_rescaled exactly equal to f.
         roi_rescaled = {}
         if total_measured_prob > 0:
@@ -112,7 +111,11 @@ class LBMAnalyzer:
             for coords, prob in roi_counts.items():
                 roi_rescaled[coords] = prob * scale_factor
 
-        return {"total_density": f, "cells": roi_rescaled}
+        return {
+            "total_density": f,
+            "cells": roi_rescaled,
+            "pure_amplified_density": counts,
+        }
 
     #############################
     #   Measurement Functions   #
@@ -142,46 +145,44 @@ class LBMAnalyzer:
             Estimated density of the region.
         """
 
-        # 1. Create an init function
+        # Create an init function
         def qargs():
-            pos, sign, vel, anc = self._state.get_clean_registers()
-            self._engine.apply_initialization_external_registers(
-                position_register=pos,
-                sign_register=sign,
-                velocity_register=vel,
-                boundary_ancillas=anc,
+            pos, sign, vel, anc, oracle_anc = self._state.get_clean_registers(
+                create_oracle_ancillas=True
             )
+
             target_qubit = QuantumBool()
             # Use * to flatten the lists into one long tuple
-            return (*pos, *sign, *vel, *anc, target_qubit)
+            return (*pos, *sign, *vel, *anc, *oracle_anc, target_qubit)
 
-        # 2. Define the IQAE state preparation wrapper
+        # Define the IQAE state preparation wrapper
         def iqae_wrapper(*flat_args):
             d = self._state.dimensions
             pos = list(flat_args[0:d])
             sign = list(flat_args[d : 2 * d])
             vel = list(flat_args[2 * d : 3 * d])
-            anc = list(flat_args[3 * d : -1])
+            anc = list(flat_args[3 * d : 4 * d])
+            or_anc = list(flat_args[-1 - d : -1])
             target = flat_args[-1]
 
-            # Step A: Run your simulation logic (Initialization + Streaming + BC)
+            # Step: Run your simulation logic (Initialization + Streaming + BC)
             self._engine.run_simulation_external_registers(
                 position_register=pos,
                 velocity_register=vel,
                 sign_register=sign,
                 boundary_ancillas=anc,
+                oracle_ancillas=or_anc,
                 iterations=simulation_iterations,
-                init=False,
+                init=True,
             )
 
-            # Step B: Apply the oracle logic
+            # Step: Apply the oracle logic
             # We compute the condition and XOR it onto the target qubit.
+            self._get_region_oracle(
+                roi=self._state.encode_roi(roi), target_qubit=target
+            )
 
-            # region_oracle = self._get_region_oracle(roi=roi)
-            # target ^= region_oracle
-            self._get_region_oracle(roi=roi, target_qubit=target)
-
-        # 3. Execute IQAE
+        # Execute IQAE
         # This returns a float representing the density in the subgrid
         mes_kwargs = {"backend": backend}
         if shots is not None:
@@ -209,10 +210,10 @@ class LBMAnalyzer:
             print("Density is 0, nothing to amplify.")
             return
 
-        # 2. Calculate optimal iterations m
+        # Calculate optimal iterations m
         m = self.get_optimal_m(region_density)
 
-        # 3. Handle the 'No Boost Needed' case
+        # Handle the 'No Boost Needed' case
         if m == 0:
             if region_density >= 0.5:
                 print(
@@ -226,7 +227,7 @@ class LBMAnalyzer:
 
         print(f"Current density: {region_density:.4f}. Amplifying with {m} iterations.")
 
-        # 4. Perform the amplification
+        # Perform the amplification
         # Note: ensure simulation_iterations matches the state that created region_density!
         self.amplify_region(
             roi=roi,
@@ -248,31 +249,59 @@ class LBMAnalyzer:
             amplification_iterations: Number of iterations to amplify.
             simulation_iterations: Number of iterations to run the simulation.
         """
+
+        # Create an init function
+        def qargs():
+            pos, sign, vel, anc, oracle_anc = self._state.get_clean_registers(
+                create_oracle_ancillas=True
+            )
+            target_qubit = QuantumBool()
+            # Use * to flatten the lists into one long tuple
+            return (*pos, *sign, *vel, *anc, *oracle_anc, target_qubit)
+
+        # Define the IQAE state preparation wrapper
+        def qaa_wrapper(*flat_args):
+            d = self._state.dimensions
+            pos = list(flat_args[0:d])
+            sign = list(flat_args[d : 2 * d])
+            vel = list(flat_args[2 * d : 3 * d])
+            anc = list(flat_args[3 * d : 4 * d])
+            or_anc = list(flat_args[-1 - d : -1])
+            target = flat_args[-1]
+
+            # Step: Run your simulation logic (Initialization + Streaming + BC)
+            self._engine.run_simulation_external_registers(
+                position_register=pos,
+                velocity_register=vel,
+                sign_register=sign,
+                boundary_ancillas=anc,
+                oracle_ancillas=or_anc,
+                iterations=simulation_iterations,
+                init=True,
+            )
+
+        def oracle_wrapper(*flat_args):
+            target = flat_args[-1]
+            # Step: Apply the oracle logic
+            # We compute the condition and XOR it onto the target qubit.
+            self._get_region_oracle(
+                roi=self._state.encode_roi(roi), target_qubit=target
+            )
+            z(target)
+            self._get_region_oracle(
+                roi=self._state.encode_roi(roi), target_qubit=target
+            )
+
         # args tells AA which registers are being modified
-        args = self._state.positions_register
+        args = qargs()
 
-        # A operator: Prepares the state (Physics)
-        def state_function(*pos_regs):
-            self._engine.run_simulation(iterations=simulation_iterations)
-
-        # O operator: Tags the state (Logic)
-        def oracle_function(*pos_regs):
-            # We re-evaluate the oracle based on the NEW positions
-            # created by state_function
-            condition = QuantumBool()
-            # condition = self._get_region_oracle(roi=roi)
-            self._get_region_oracle(roi=roi, target_qubit=condition)
-
-            # Apply the phase flip required for AA
-            z(condition)
-            # Because of @auto_uncompute on the oracle methods,
-            # 'condition' is cleaned up perfectly here.
+        qaa_wrapper(*args)
 
         # Perform the amplification
         amplitude_amplification(
             args=args,
-            state_function=state_function,
-            oracle_function=oracle_function,
+            state_function=qaa_wrapper,
+            oracle_function=oracle_wrapper,
             iter=amplification_iterations,
         )
 
@@ -312,20 +341,26 @@ class LBMAnalyzer:
         Returns:
             A QuantumBool representing the subgrid.
         """
-        in_subrid_ancillas = [QuantumBool() for _ in range(self._state.dimensions)]
+        if self._state._oracle_ancillas is None:
+            self._state._oracle_ancillas = [
+                QuantumBool() for _ in range(self._state.dimensions)
+            ]
 
         for d in range(self._state.dimensions):
             with self._state.positions_register[d] < bounds[d][0]:
-                in_subrid_ancillas[d].flip()
+                self._state._oracle_ancillas[d].flip()
             with self._state.positions_register[d] >= bounds[d][1]:
-                in_subrid_ancillas[d].flip()
-            in_subrid_ancillas[d].flip()
+                self._state._oracle_ancillas[d].flip()
+            self._state._oracle_ancillas[d].flip()
 
-        # Use the control environment. Qrisp handles the temporary bits
-        # efficiently here without creating the DAG cycle.
-        mcx(in_subrid_ancillas, target_qubit, method="gray")
-        # for d in range(self._state.dimensions):
-        # in_subrid_ancillas[d].uncompute()
+        mcx(self._state._oracle_ancillas, target_qubit, method="gray")
+
+        for d in range(self._state.dimensions):
+            self._state._oracle_ancillas[d].flip()
+            with self._state.positions_register[d] < bounds[d][0]:
+                self._state._oracle_ancillas[d].flip()
+            with self._state.positions_register[d] >= bounds[d][1]:
+                self._state._oracle_ancillas[d].flip()
 
     @auto_uncompute
     def _get_multi_point_oracle(self, points_list, target_qubit):

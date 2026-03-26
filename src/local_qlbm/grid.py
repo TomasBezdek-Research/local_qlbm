@@ -1,6 +1,9 @@
+from pathlib import Path
 from typing import Dict
 
+import numpy as np
 from numpy.typing import ArrayLike
+from pyevtk.hl import gridToVTK
 
 from ._analyzer import LBMAnalyzer
 from ._engine import LBMEngine
@@ -72,6 +75,78 @@ class LBMGrid:
         """Applies boundary conditions to the simulation"""
         self._engine.apply_boundary_conditions()
 
+    #########################################
+    #   Run simulation with visualization   #
+    #########################################
+    def run_simulation_with_visualization(
+        self,
+        filename,
+        iterations=1,
+        init=True,
+        time_steps_per_frame=1,
+    ):
+        """Runs the simulation for a given number of iterations with visualization."""
+        full_path = Path(filename)
+        target_dir = full_path.parent
+        base_name = full_path.name
+        search_pattern = f"{base_name}*.vts"
+        for file in target_dir.glob(search_pattern):
+            file.unlink()
+            print(f"Deleted: {file}")
+
+        if init:
+            self._engine.apply_initialization()
+        dens = self.measure_density()
+        dens_grid = self._state.physical_density_to_numpy(dens)
+        self._export_to_vtk(f"{filename}_{0:03d}", dens_grid)
+
+        for i in range(iterations):
+            for _ in range(time_steps_per_frame):
+                self._engine.stream()
+                self._engine.apply_boundary_conditions()
+            dens = self.measure_density()
+            dens_grid = self._state.physical_density_to_numpy(dens)
+            self._export_to_vtk(
+                f"{filename}_{(time_steps_per_frame * (i + 1)):03d}", dens_grid
+            )
+
+    def _export_to_vtk(
+        self, filename, data, spacing=(1.0, 1.0, 1.0), origin=(0.0, 0.0, 0.0)
+    ):
+        shape = data.shape
+        dims = len(shape)
+
+        # Expand to 3D shape
+        full_shape = list(shape) + [1] * (3 - dims)
+        nx, ny, nz = full_shape
+        dx, dy, dz = spacing
+        x0, y0, z0 = origin
+
+        # Logic: Only add a boundary (+1) if the dimension > 1
+        # This prevents 2D from becoming a "thin 3D box"
+        def get_coords(n, delta, start):
+            if n > 1:
+                # Multi-cell dimension: Offset for cell centers
+                return np.arange(n + 1) * delta + (start - 0.5 * delta)
+            else:
+                # Flat dimension: Keep exactly at the origin point
+                return np.array([start])
+
+        x = get_coords(nx, dx, x0)
+        y = get_coords(ny, dy, y0)
+        z = get_coords(nz, dz, z0)
+
+        # Create meshgrid
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+
+        # Reshape data
+        data_3d = data.reshape(full_shape)
+
+        # Export
+        gridToVTK(filename, X, Y, Z, cellData={"Density": data_3d})
+
+        print(f"Saved: {filename}.vts")
+
     ###################
     #   Measurement   #
     ###################
@@ -87,7 +162,8 @@ class LBMGrid:
         roi: RegionOfInterest,
         simulation_iterations: int = 1,
         eps: float = 0.01,
-        shots: int = 1000,
+        alpha: float = 0.05,
+        shots: int | None = None,
         backend=None,
     ) -> Dict:
         """
@@ -107,7 +183,32 @@ class LBMGrid:
                 cells: A dict of the cells in the region.
         """
         return self._analyzer.analyze_region(
-            roi, simulation_iterations, eps, shots, backend
+            roi=roi,
+            simulation_iterations=simulation_iterations,
+            eps=eps,
+            alpha=alpha,
+            shots=shots,
+            backend=backend,
+        )
+
+    def amplify_region(
+        self,
+        roi: RegionOfInterest,
+        amplification_iterations: int = 1,
+        simulation_iterations: int = 1,
+    ) -> None:
+        """
+        Amplifies the region to make internal distribution measurable.
+
+        Args:
+            roi: RegionOfInterest object.
+            amplification_iterations: Number of iterations to run the amplification.
+            simulation_iterations: Number of iterations to run the simulation.
+        """
+        self._analyzer.amplify_region(
+            roi=roi,
+            amplification_iterations=amplification_iterations,
+            simulation_iterations=simulation_iterations,
         )
 
     def estimate_region_density(
@@ -116,7 +217,7 @@ class LBMGrid:
         simulation_iterations: int = 1,
         eps: float = 0.01,
         alpha: float = 0.05,
-        shots: int = 1000,
+        shots: int | None = None,
         backend=None,
     ) -> float:
         """
