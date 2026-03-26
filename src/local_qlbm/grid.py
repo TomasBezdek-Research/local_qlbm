@@ -309,24 +309,6 @@ class LBMGrid:
         """
         return self._state.physical_density_to_numpy(physical_density)
 
-    ######################
-    #   Visualization    #
-    ######################
-    def results_to_numpy(self, simulation_results):
-        return self._state.results_to_numpy(simulation_results)
-
-    def physical_density_to_numpy(self, physical_density):
-        """
-        Converts the 'cells' dict from analyze_region into a dense NumPy array.
-
-        Args:
-            physical_density: The dictionary of physical density.
-
-        Returns:
-            A NumPy array with the same shape as the grid.
-        """
-        return self._state.physical_density_to_numpy(physical_density)
-
     ################
     #   Display    #
     ################

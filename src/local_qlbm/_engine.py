@@ -2,7 +2,6 @@ import numpy as np
 from qrisp import QuantumBool, auto_uncompute, mcx, prepare
 
 from ._state import BCCombination, LBMState
-from ._state import BCCombination, LBMState
 from .types import BoundaryCondition
 
 
@@ -63,7 +62,6 @@ class LBMEngine:
             num_states = 2 ** self._state.positions_register[d].size
             statevector = np.zeros(num_states)
             start, end = encoded_bounds[d]
-            statevector[start:end] = 1.0
             statevector[start:end] = 1.0
             statevector /= np.linalg.norm(statevector)
             prepare(self._state.positions_register[d], statevector)
@@ -182,35 +180,12 @@ class LBMEngine:
         """
         Apply the boundary conditions to the positions.
         Used when if some BC is Slip and rest Slip or Periodic.
-        Aplly the boundary conditions to the positions.
-        """
-        if self._state.bc_combination == BCCombination.PERIODIC:
-            return
-
-        if self._state.bc_combination == BCCombination.SLIP:
-            self._apply_bc_slip()
-            return
-
-        if self._state.bc_combination == BCCombination.BB:
-            self._apply_bc_bb()
-            return
-
-        if self._state.bc_combination == BCCombination.BB_AND_SLIP:
-            self._apply_bc_bb_slip()
-            return
-
-    @auto_uncompute
-    def _apply_bc_slip(self):
-        """
-        Apply the boundary conditions to the positions.
-        Used when if some BC is Slip and rest Slip or Periodic.
         """
         for d in range(self._state.dimensions):
             if self._state.boundary_conditions[d] == BoundaryCondition.PERIODIC:
                 continue
 
             self._is_out_boundary(d)
-            with self._state.boundary_ancillas[self._state.boundary_ancilla_indexes[d]]:
             with self._state.boundary_ancillas[self._state.boundary_ancilla_indexes[d]]:
                 # Flip the sign register if the position is out of bounds
                 self._state.sign_register[d].flip()
@@ -344,7 +319,6 @@ class LBMEngine:
     #########################
 
     @auto_uncompute
-    @auto_uncompute
     def _is_out_boundary(self, dim: int):
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
@@ -355,15 +329,11 @@ class LBMEngine:
         if dim not in self._state.boundary_ancilla_indexes:
             return
 
-        if dim not in self._state.boundary_ancilla_indexes:
-            return
-
         if self._state.boundary_offsets[dim] > 1:
             self._is_out_boundary_multi_layer(dim)
         else:
             self._is_out_boundary_single_layer(dim)
 
-    @auto_uncompute
     @auto_uncompute
     def _is_out_boundary_single_layer(self, dim: int):
         """
@@ -374,12 +344,7 @@ class LBMEngine:
         """
         with self._state.positions_register[dim] == (
             self._state.boundary_offsets[dim] - 1
-        with self._state.positions_register[dim] == (
-            self._state.boundary_offsets[dim] - 1
         ):
-            self._state.boundary_ancillas[
-                self._state.boundary_ancilla_indexes[dim]
-            ].flip()
             self._state.boundary_ancillas[
                 self._state.boundary_ancilla_indexes[dim]
             ].flip()
@@ -389,11 +354,7 @@ class LBMEngine:
             self._state.boundary_ancillas[
                 self._state.boundary_ancilla_indexes[dim]
             ].flip()
-            self._state.boundary_ancillas[
-                self._state.boundary_ancilla_indexes[dim]
-            ].flip()
 
-    @auto_uncompute
     @auto_uncompute
     def _is_out_boundary_multi_layer(self, dim: int):
         """
@@ -406,20 +367,13 @@ class LBMEngine:
             self._state.boundary_ancillas[
                 self._state.boundary_ancilla_indexes[dim]
             ].flip()
-            self._state.boundary_ancillas[
-                self._state.boundary_ancilla_indexes[dim]
-            ].flip()
         with self._state.positions_register[dim] >= int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
         ):
             self._state.boundary_ancillas[
                 self._state.boundary_ancilla_indexes[dim]
             ].flip()
-            self._state.boundary_ancillas[
-                self._state.boundary_ancilla_indexes[dim]
-            ].flip()
 
-    @auto_uncompute
     @auto_uncompute
     def _comes_from_boundary(self, dim: int):
         """
@@ -434,11 +388,7 @@ class LBMEngine:
                 self._state.boundary_ancillas[
                     self._state.boundary_ancilla_indexes[dim]
                 ].flip()
-                self._state.boundary_ancillas[
-                    self._state.boundary_ancilla_indexes[dim]
-                ].flip()
 
-        # 2. Condition: At upper boundary AND moving from it (sign is False/0)
         # 2. Condition: At upper boundary AND moving from it (sign is False/0)
         upper_bound = int(
             self._state.grid_size[dim] + self._state.boundary_offsets[dim]
