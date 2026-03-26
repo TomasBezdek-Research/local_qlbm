@@ -189,6 +189,7 @@ class LBMAnalyzer:
             mes_kwargs["shots"] = shots
         return IQAE(
             qargs,
+            qargs,
             iqae_wrapper,
             eps=eps,
             alpha=alpha,
@@ -317,6 +318,18 @@ class LBMAnalyzer:
         return in_region.get_measurement(shots=shots, backend=backend)
 
     def _get_region_oracle(self, roi: RegionOfInterest, target_qubit: QuantumBool):
+    def fast_region_density_estimate(
+        self, roi: RegionOfInterest, shots=None, backend=None
+    ):
+        """
+        Estimates the density of a region using the fast method.
+        """
+        state_roi = self._state.encode_roi(roi)
+        in_region = QuantumBool()
+        self._get_region_oracle(roi=state_roi, target_qubit=in_region)
+        return in_region.get_measurement(shots=shots, backend=backend)
+
+    def _get_region_oracle(self, roi: RegionOfInterest, target_qubit: QuantumBool):
         """
         Returns the oracle for the specified region.
 
@@ -329,7 +342,10 @@ class LBMAnalyzer:
         if roi.is_subgrid:
             return self._get_subgrid_oracle(roi.bounds, target_qubit)
         return self._get_multi_point_oracle(roi.points_list, target_qubit)
+            return self._get_subgrid_oracle(roi.bounds, target_qubit)
+        return self._get_multi_point_oracle(roi.points_list, target_qubit)
 
+    def _get_subgrid_oracle(self, bounds, target_qubit):
     def _get_subgrid_oracle(self, bounds, target_qubit):
         """
         Returns the oracle for the specified subgrid.
@@ -364,6 +380,7 @@ class LBMAnalyzer:
 
     @auto_uncompute
     def _get_multi_point_oracle(self, points_list, target_qubit):
+    def _get_multi_point_oracle(self, points_list, target_qubit):
         """
         Returns the oracle for the specified region.
 
@@ -382,6 +399,8 @@ class LBMAnalyzer:
             return res
 
         # Combine all points with OR logic
+        for point in points_list:
+            target_qubit |= check_single_point(point)
         for point in points_list:
             target_qubit |= check_single_point(point)
 

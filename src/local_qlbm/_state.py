@@ -1,4 +1,5 @@
 import enum
+import enum
 from typing import Dict
 
 import numpy as np
@@ -13,6 +14,13 @@ from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path
 )
 
 from .types import BoundaryCondition, RegionOfInterest, VelocitySet
+
+
+class BCCombination(enum.Enum):
+    PERIODIC = enum.auto()
+    BB = enum.auto()
+    SLIP = enum.auto()
+    BB_AND_SLIP = enum.auto()
 
 
 class BCCombination(enum.Enum):
@@ -91,8 +99,42 @@ class LBMState:
         self._boundary_ancilla_indexes = {}
         self._bb_boundary_ancilla_indexes = {}
         idx = 0
+        self._boundary_layers = [
+            self._velocity_set.aditional_layers if bc.need_offset else 0
+            for bc in self._boundary_conditions
+        ]
+        self._boundary_offsets = [
+            self._velocity_set.offset if bc.need_offset else 0
+            for bc in self._boundary_conditions
+        ]
+        active_bcs = {
+            bc for bc in boundary_conditions if bc != BoundaryCondition.PERIODIC
+        }
+        has_bb = BoundaryCondition.BOUNCE_BACK in active_bcs
+        has_slip = BoundaryCondition.SIMPLE_SLIP in active_bcs
+
+        if has_bb and has_slip:
+            self._bc_combination = BCCombination.BB_AND_SLIP
+        elif has_bb:
+            self._bc_combination = BCCombination.BB
+        elif has_slip:
+            self._bc_combination = BCCombination.SLIP
+        else:
+            self._bc_combination = BCCombination.PERIODIC
+
+        # Initialize the ancilla indexes
+        self._boundary_ancilla_indexes = {}
+        self._bb_boundary_ancilla_indexes = {}
+        idx = 0
         for i, bc in enumerate(self._boundary_conditions):
             if bc == BoundaryCondition.BOUNCE_BACK:
+                self._bb_boundary_ancilla_indexes[i] = idx
+            if (
+                bc == BoundaryCondition.BOUNCE_BACK
+                or bc == BoundaryCondition.SIMPLE_SLIP
+            ):
+                self._boundary_ancilla_indexes[i] = idx
+                idx += 1
                 self._bb_boundary_ancilla_indexes[i] = idx
             if (
                 bc == BoundaryCondition.BOUNCE_BACK
@@ -111,6 +153,13 @@ class LBMState:
         # Initialize the registers
         self._init_registers()
 
+
+        # Velocities
+        self._init_velocity_properties()
+
+        # Initialize the registers
+        self._init_registers()
+
         self._position_register_sizes = np.array(
             [mod.size for mod in self._positions_register], dtype=int
         )
@@ -121,12 +170,24 @@ class LBMState:
 
     def _init_velocity_properties(self):
 
+    def _init_velocity_properties(self):
+
         num_points = np.ceil(len(self._velocity_set.unique_coordinates) / 2)
         self._velocity_qubits_per_dim = int(np.ceil(np.log2(num_points)))
 
         if self._velocity_qubits_per_dim < 1:
             self._velocity_qubits_per_dim = 1
 
+    def _init_registers(self):
+        self._boundary_ancillas = []
+        for _ in self._boundary_ancilla_indexes.keys():
+            self._boundary_ancillas.append(QuantumBool())
+
+        self._positions_register = [
+            QuantumModulus(int(size)) for size in self._positions_register_shape
+        ]
+        # sign register - 0/False-negative direction, 1/True-positive direction
+        self._sign_register = [QuantumBool() for _ in range(self._dimensions)]
     def _init_registers(self):
         self._boundary_ancillas = []
         for _ in self._boundary_ancilla_indexes.keys():
@@ -293,6 +354,14 @@ class LBMState:
         return self._bb_boundary_ancilla_indexes
 
     @property
+    def boundary_ancilla_indexes(self):
+        return self._boundary_ancilla_indexes
+
+    @property
+    def bb_boundary_ancilla_indexes(self):
+        return self._bb_boundary_ancilla_indexes
+
+    @property
     def total_size(self):
         return self._total_size
 
@@ -311,6 +380,10 @@ class LBMState:
     @property
     def initial_velocity(self):
         return self._initial_velocity
+
+    @property
+    def bc_combination(self):
+        return self._bc_combination
 
     @property
     def bc_combination(self):
@@ -405,6 +478,7 @@ class LBMState:
             Coordinates transformed to register index.
         """
         return user_coord + self._boundary_offsets[dimension]
+        return user_coord + self._boundary_offsets[dimension]
 
     def encoded_to_user_coord(self, encoded_coord, dimension):
         """Converts register index back to user 0-indexed coord.
@@ -416,6 +490,7 @@ class LBMState:
         Returns:
             Coordinates transformed to user 0-indexed coordinate.
         """
+        return encoded_coord - self._boundary_offsets[dimension]
         return encoded_coord - self._boundary_offsets[dimension]
 
     def get_encoded_bounds(self, user_bounds):
