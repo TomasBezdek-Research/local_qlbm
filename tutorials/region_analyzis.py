@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # Set the region of interest to analyze
     roi = RegionOfInterest.from_bounds(
         bounds=[
-            (0, 2),
+            (1, 2),
             (1, 3),
         ]
     )

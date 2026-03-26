@@ -13,9 +13,9 @@ if __name__ == "__main__":
     )
     initial_bubble = RegionOfInterest.from_bounds(
         bounds=[
-            (0, 0),
-            (0, 0),
-            (0, 0),
+            (0, 1),
+            (0, 1),
+            (0, 1),
         ]
     )
     initial_velocity = [1, 1, 0]
