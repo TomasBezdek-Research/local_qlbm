@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -150,7 +149,7 @@ class LBMGrid:
     ###################
     #   Measurement   #
     ###################
-    def measure_density(self) -> Dict:
+    def measure_density(self) -> dict:
         """Measures the simulation"""
         return self._state.get_physical_density()
 
@@ -165,7 +164,7 @@ class LBMGrid:
         alpha: float = 0.05,
         shots: int | None = None,
         backend=None,
-    ) -> Dict:
+    ) -> dict:
         """
         1. Estimates total density (f) in ROI using IQAE.
         2. Amplifies ROI to make internal distribution measurable.

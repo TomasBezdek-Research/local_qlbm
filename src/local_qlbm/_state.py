@@ -1,13 +1,8 @@
 import enum
-from typing import Dict
 
 import numpy as np
 from numpy.typing import ArrayLike
-from qrisp import (
-    QuantumFloat,
-    QuantumModulus,
-    multi_measurement,
-)
+from qrisp import QuantumFloat, QuantumModulus, multi_measurement
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
     QuantumBool,
 )
@@ -150,13 +145,16 @@ class LBMState:
         velocity_register: list,
         sign_register: list,
         boundary_ancillas: list,
-        oracle_ancillas: list | None = None,
+        oracle_ancillas: list = [],
     ):
         self._positions_register = position_register
         self._velocity_register = velocity_register
         self._sign_register = sign_register
         self._boundary_ancillas = boundary_ancillas
-        self._oracle_ancillas = oracle_ancillas
+        if len(oracle_ancillas) == 0:
+            self._oracle_ancillas = None
+        else:
+            self._oracle_ancillas = oracle_ancillas
 
     ################################
     #   Initialization Functions   #
@@ -172,7 +170,7 @@ class LBMState:
     #############################
     #   Measurement Functions   #
     #############################
-    def _measure_density(self, shots=None, backend=None) -> Dict:
+    def _measure_density(self, shots=None, backend=None) -> dict:
         """
         Measure the density of the grid.
 
@@ -188,7 +186,7 @@ class LBMState:
         )
         return measurement
 
-    def full_measurement(self, shots=None, backend=None) -> Dict:
+    def full_measurement(self, shots=None, backend=None) -> dict:
         """
         Measure the full state of the grid.
 
@@ -206,7 +204,7 @@ class LBMState:
         )
         return measurement
 
-    def get_physical_density(self, shots=None, backend=None) -> Dict:
+    def get_physical_density(self, shots=None, backend=None) -> dict:
         """
         Measures density and strips away boundary layers/ghost cells.
         Returns a dict with user-space coordinate tuples as keys.
@@ -285,6 +283,12 @@ class LBMState:
         return self._boundary_ancillas
 
     @property
+    def oracle_ancillas(self) -> list[QuantumBool]:
+        if self._oracle_ancillas is None:
+            self._oracle_ancillas = [QuantumBool() for _ in range(self.dimensions)]
+        return self._oracle_ancillas
+
+    @property
     def boundary_ancilla_indexes(self):
         return self._boundary_ancilla_indexes
 
@@ -319,7 +323,7 @@ class LBMState:
     ##################
     #   Utilities    #
     ##################
-    def results_to_numpy(self, analysis_results: Dict) -> np.ndarray:
+    def results_to_numpy(self, analysis_results: dict) -> np.ndarray:
         """Converts the 'cells' dict from analyze_region into a dense NumPy array.
 
         Args:
@@ -334,7 +338,7 @@ class LBMState:
             grid[coords] = val
         return grid
 
-    def physical_density_to_numpy(self, physical_density: Dict) -> np.ndarray:
+    def physical_density_to_numpy(self, physical_density: dict) -> np.ndarray:
         """Converts the 'cells' dict from analyze_region into a dense NumPy array.
 
         Args:
@@ -367,7 +371,7 @@ class LBMState:
         vel = []
         sign = []
         anc = []
-        oracle_anc = None
+        oracle_anc = []
         for _ in self._boundary_ancilla_indexes.keys():
             anc.append(QuantumBool())
 
@@ -394,7 +398,7 @@ class LBMState:
     ###################
     #   Coordinates   #
     ###################
-    def user_to_encoded_coord(self, user_coord, dimension):
+    def user_to_encoded_coord(self, user_coord: int, dimension: int) -> int:
         """Converts user 0-indexed coord to register index.
 
         Args:
@@ -432,7 +436,7 @@ class LBMState:
             for d, (low, high) in enumerate(user_bounds)
         ]
 
-    def get_encoded_point(self, user_point):
+    def get_encoded_point(self, user_point: tuple[int, ...]) -> tuple[int, ...]:
         """Converts user [x, y, ...] list to encoded indices.
 
         Args:
@@ -441,11 +445,13 @@ class LBMState:
         Returns:
             List of encoded coordinates.
         """
-        return [
-            self.user_to_encoded_coord(coord, d) for d, coord in enumerate(user_point)
-        ]
+        return tuple(
+            [self.user_to_encoded_coord(coord, d) for d, coord in enumerate(user_point)]
+        )
 
-    def get_encoded_points(self, user_points):
+    def get_encoded_points(
+        self, user_points: set[tuple[int, ...]]
+    ) -> set[tuple[int, ...]]:
         """Converts list of user [x, y, ...] tuples to encoded indices.
 
         Args:
@@ -454,7 +460,7 @@ class LBMState:
         Returns:
             List of encoded [x, y, ...] tuples.
         """
-        return [self.get_encoded_point(point) for point in user_points]
+        return set([self.get_encoded_point(point) for point in user_points])
 
     def encode_roi(self, user_roi: RegionOfInterest) -> RegionOfInterest:
         """Converts user-space ROI to register-space (encoded) ROI.
@@ -467,8 +473,8 @@ class LBMState:
         """
         if user_roi.is_subgrid:
             encoded_bounds = self.get_encoded_bounds(user_bounds=user_roi.bounds)
-            return RegionOfInterest(bounds=encoded_bounds)
+            return RegionOfInterest(_bounds=encoded_bounds)
 
         else:
-            encoded_points = self.get_encoded_points(user_points=user_roi.points_list)
-            return RegionOfInterest(points_list=encoded_points)
+            encoded_points = self.get_encoded_points(user_points=user_roi.points_set)
+            return RegionOfInterest(_points_set=encoded_points)

@@ -1,5 +1,5 @@
 import numpy as np
-from qrisp import QuantumBool, auto_uncompute, mcx, prepare
+from qrisp import QuantumBool, QuantumVariable, auto_uncompute, mcx, prepare
 
 from ._state import BCCombination, LBMState
 from .types import BoundaryCondition
@@ -30,7 +30,7 @@ class LBMEngine:
         velocity_register: list,
         sign_register: list,
         boundary_ancillas: list,
-        oracle_ancillas: list | None = None,
+        oracle_ancillas: list = [],
     ):
         """
         Applies the gates to set the registers to t=0.
@@ -50,10 +50,19 @@ class LBMEngine:
         Applies the gates to set the registers to t=0.
         This is called internally by IQAE/AA.
         """
-        if not self._state.initial_bubble.is_subgrid:
+        if self._state.initial_bubble.is_subgrid:
+            self._init_subgrid()
+        elif self._state.initial_bubble.is_point_cloud:
+            self._init_point_cloud()
+        else:
             raise ValueError(
-                "Initial bubble must be a subgrid. Use set_initial_state() to set the initial state."
+                "Initial bubble must be a subgrid or point cloud. Use set_initial_state() to set the initial state."
             )
+
+        # Prepare Velocity
+        self._set_global_velocity(self._state.initial_velocity)
+
+    def _init_subgrid(self) -> None:
         # Prepare Positions
         encoded_bounds = self._state.get_encoded_bounds(
             self._state.initial_bubble.bounds
@@ -66,8 +75,39 @@ class LBMEngine:
             statevector /= np.linalg.norm(statevector)
             prepare(self._state.positions_register[d], statevector)
 
-        # Prepare Velocity
-        self._set_global_velocity(self._state.initial_velocity)
+    def _init_point_cloud(self) -> None:
+        raise NotImplementedError(
+            "Initial bubble as point cloud is not implemented yet."
+        )
+        points = self._state.get_encoded_points(self._state.initial_bubble.points_set)
+
+        dims_sizes = [reg.size for reg in self._state.positions_register]
+        total_states = 2 ** sum(dims_sizes)
+
+        full_statevector = np.zeros(total_states)
+
+        for pt in points:
+            flat_index = 0
+            current_bit_shift = 0
+
+            for coord, size in zip(pt, dims_sizes):
+                flat_index += int(coord) << current_bit_shift
+                current_bit_shift += size
+            full_statevector[flat_index] = 1.0
+
+        full_statevector /= np.linalg.norm(full_statevector)
+
+        master_session = self._state.positions_register[0].qs
+        r = []
+        for reg in self._state.positions_register:
+            r += reg[:]
+        qv = QuantumVariable(len(r), qs=master_session)
+        qv.reg = r
+
+        prepare(
+            qv,
+            full_statevector,
+        )
 
     def _set_global_velocity(self, velocity_vector):
         """
@@ -119,7 +159,7 @@ class LBMEngine:
         velocity_register: list,
         sign_register: list,
         boundary_ancillas: list,
-        oracle_ancillas: list | None = None,
+        oracle_ancillas: list = [],
         iterations=1,
         init=False,
     ):

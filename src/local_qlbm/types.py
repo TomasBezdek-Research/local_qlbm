@@ -1,6 +1,5 @@
 import enum
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 
 class VelocitySet(enum.Enum):
@@ -46,18 +45,30 @@ class BoundaryCondition(enum.Enum):
 
 @dataclass(frozen=True)
 class RegionOfInterest:
-    bounds: Optional[List[Tuple[int, int]]] = None
-    points_list: Optional[List[List[int]]] = None
+    _bounds: list[tuple[int, int]] | None = None
+    _points_set: set[tuple[int, ...]] | None = None
 
     def __post_init__(self):
         """Validation logic runs after initialization."""
-        if (self.bounds is not None) == (self.points_list is not None):
+        if (self._bounds is not None) == (self._points_set is not None):
             raise ValueError(
                 "Exactly one of 'bounds' or 'points_list' must be specified."
             )
 
+    @property
+    def bounds(self) -> list[tuple[int, int]]:
+        if self._bounds is None:
+            raise AttributeError("This ROI is a point cloud, not a subgrid.")
+        return self._bounds
+
+    @property
+    def points_set(self) -> set[tuple[int, ...]]:
+        if self._points_set is None:
+            raise AttributeError("This ROI is a subgrid, not a point cloud.")
+        return self._points_set
+
     @classmethod
-    def from_bounds(cls, bounds):
+    def from_bounds(cls, bounds: list[tuple[int, int]]):
         """
         Creates a RegionOfInterest from a list of tuples representing the bounds.
 
@@ -68,10 +79,10 @@ class RegionOfInterest:
         Returns:
             RegionOfInterest: A RegionOfInterest object.
         """
-        return cls(bounds=bounds)
+        return cls(_bounds=bounds)
 
     @classmethod
-    def from_points(cls, points):
+    def from_points(cls, points: set[tuple[int, ...]]):
         """
         Creates a RegionOfInterest from a list of lists representing the points.
 
@@ -81,17 +92,17 @@ class RegionOfInterest:
         Returns:
             RegionOfInterest: A RegionOfInterest object.
         """
-        return cls(points_list=points)
+        return cls(_points_set=points)
 
     @property
     def is_subgrid(self) -> bool:
-        return self.bounds is not None
+        return self._bounds is not None
 
     @property
     def is_point_cloud(self) -> bool:
-        return self.points_list is not None
+        return self._points_set is not None
 
-    def contains(self, coords: tuple) -> bool:
+    def contains(self, coords: tuple[int, ...]) -> bool:
         """
         Checks if the given user-space coordinates are inside this ROI.
 
@@ -107,4 +118,4 @@ class RegionOfInterest:
         else:
             # Check if the coordinate exists in the discrete point list
             # We convert to list if points_list is a list of lists
-            return list(coords) in self.points_list
+            return coords in self.points_set

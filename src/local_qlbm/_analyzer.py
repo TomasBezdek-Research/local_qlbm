@@ -1,5 +1,3 @@
-from typing import Dict
-
 import numpy as np
 from qrisp import (
     IQAE,
@@ -48,7 +46,7 @@ class LBMAnalyzer:
         alpha: float = 0.05,
         shots: int | None = None,
         backend=None,
-    ) -> Dict:
+    ) -> dict:
         """
         1. Estimates total density (f) in ROI using IQAE.
         2. Amplifies ROI to make internal distribution measurable.
@@ -328,9 +326,13 @@ class LBMAnalyzer:
         """
         if roi.is_subgrid:
             return self._get_subgrid_oracle(roi.bounds, target_qubit)
-        return self._get_multi_point_oracle(roi.points_list, target_qubit)
+        elif roi.is_point_cloud:
+            return self._get_multi_point_oracle(roi.points_set, target_qubit)
+        return
 
-    def _get_subgrid_oracle(self, bounds, target_qubit):
+    def _get_subgrid_oracle(
+        self, bounds: list[tuple[int, int]], target_qubit: QuantumBool
+    ) -> None:
         """
         Returns the oracle for the specified subgrid.
 
@@ -363,7 +365,9 @@ class LBMAnalyzer:
                 self._state._oracle_ancillas[d].flip()
 
     @auto_uncompute
-    def _get_multi_point_oracle(self, points_list, target_qubit):
+    def _get_multi_point_oracle(
+        self, points_set: set[tuple[int, ...]], target_qubit: QuantumBool
+    ) -> None:
         """
         Returns the oracle for the specified region.
 
@@ -375,21 +379,25 @@ class LBMAnalyzer:
             A QuantumBool representing the region.
         """
 
-        def check_single_point(coords):
-            res = self._state.positions_register[0] == coords[0]
-            for d in range(1, self._state.dimensions):
-                res &= self._state.positions_register[d] == coords[d]
-            return res
+        def check_single_point(coords: tuple[int, ...]):
+            for d in range(self._state.dimensions):
+                with self._state.positions_register[d] == coords[d]:
+                    self._state.oracle_ancillas[d].flip()
 
-        # Combine all points with OR logic
-        for point in points_list:
-            target_qubit |= check_single_point(point)
+            mcx(self._state._oracle_ancillas, target_qubit, method="gray")
+
+            for d in range(self._state.dimensions):
+                with self._state.positions_register[d] == coords[d]:
+                    self._state.oracle_ancillas[d].flip()
+
+        for point in points_set:
+            check_single_point(point)
 
     ##################
     #   Utilities    #
     ##################
     @staticmethod
-    def get_optimal_m(a):
+    def get_optimal_m(a: float) -> int:
         """
         Calculates the optimal number of iterations for amplification.
 
@@ -416,7 +424,7 @@ class LBMAnalyzer:
         return m
 
     @staticmethod
-    def get_optimal_m_rounded(a):
+    def get_optimal_m_rounded(a: float) -> int:
         """
         Calculates the optimal number of iterations for amplification.
 
