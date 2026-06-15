@@ -1,5 +1,6 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 """
 This tutorial demonstrates how to estimate the density of a region in an LBM simulation.
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     )
 
     # Define simulation parameters
-    simulation_iterations = 0
+    simulation_iterations = 1
 
     # Run the simulation for purpouse of fast estimation
     grid.run_simulation(iterations=simulation_iterations, init=True)
@@ -52,8 +53,8 @@ if __name__ == "__main__":
     # Estimate region density using precise method - IQAE (may be slower)
     den_prec = grid.estimate_region_density(
         roi,
-        eps=0.05,
-        alpha=0.1,
-        simulation_iterations=0,
+        eps=0.1,
+        alpha=0.2,
+        simulation_iterations=simulation_iterations,
     )
     print("Region density (precise):", den_prec)

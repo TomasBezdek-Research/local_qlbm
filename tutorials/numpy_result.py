@@ -1,5 +1,6 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 """
 Numpy Result Tutorial

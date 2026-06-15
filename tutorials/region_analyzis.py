@@ -1,5 +1,6 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 """
 Region analysis tutorial.
@@ -40,4 +41,4 @@ if __name__ == "__main__":
     )
 
     # Analyze the region and print the results
-    print(grid.analyze_region(roi, simulation_iterations=0, alpha=0.1))
+    print(grid.analyze_region(roi, simulation_iterations=1, alpha=0.2, eps=0.1))

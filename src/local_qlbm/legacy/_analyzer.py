@@ -258,7 +258,7 @@ class LBMAnalyzer:
             return (*pos, *sign, *vel, *anc, *oracle_anc, target_qubit)
 
         # Define the IQAE state preparation wrapper
-        def qaa_wrapper(*flat_args):
+        def qaa_wrapper(*flat_args) -> None:
             d = self._state.dimensions
             pos = list(flat_args[0:d])
             sign = list(flat_args[d : 2 * d])
@@ -278,7 +278,7 @@ class LBMAnalyzer:
                 init=True,
             )
 
-        def oracle_wrapper(*flat_args):
+        def oracle_wrapper(*flat_args) -> None:
             target = flat_args[-1]
             # Step: Apply the oracle logic
             # We compute the condition and XOR it onto the target qubit.
@@ -305,7 +305,7 @@ class LBMAnalyzer:
 
     def fast_region_density_estimate(
         self, roi: RegionOfInterest, shots=None, backend=None
-    ):
+    ) -> dict:
         """
         Estimates the density of a region using the fast method.
         """
@@ -314,7 +314,9 @@ class LBMAnalyzer:
         self._get_region_oracle(roi=state_roi, target_qubit=in_region)
         return in_region.get_measurement(shots=shots, backend=backend)
 
-    def _get_region_oracle(self, roi: RegionOfInterest, target_qubit: QuantumBool):
+    def _get_region_oracle(
+        self, roi: RegionOfInterest, target_qubit: QuantumBool
+    ) -> None:
         """
         Returns the oracle for the specified region.
 

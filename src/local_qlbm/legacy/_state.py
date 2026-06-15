@@ -1,7 +1,6 @@
 import enum
 
 import numpy as np
-from numpy.typing import ArrayLike
 from qrisp import QuantumFloat, QuantumModulus, multi_measurement
 from qrisp.alg_primitives.arithmetic.adders.qcla.classical_quantum.cq_carry_path import (
     QuantumBool,
@@ -23,7 +22,7 @@ class LBMState:
 
     Parameters
     ----------
-    grid_size : ArrayLike
+    grid_size : np.typing.NDArray[np.int_] | list[int]
         The size of the grid.
     velocity_set : VelocitySet
         The set of velocities to use.
@@ -34,11 +33,11 @@ class LBMState:
     """
 
     _initial_bubble: RegionOfInterest
-    _initial_velocity: ArrayLike
+    _initial_velocity: np.typing.NDArray[np.int_] | list[int]
 
     def __init__(
         self,
-        grid_size: ArrayLike,
+        grid_size: np.typing.NDArray[np.int_] | list[int],
         velocity_set: VelocitySet,
         boundary_conditions: list[BoundaryCondition] | BoundaryCondition,
         name=None,
@@ -114,7 +113,7 @@ class LBMState:
             + (self._velocity_qubits_per_dim + 1) * self._dimensions
         )
 
-    def _init_velocity_properties(self):
+    def _init_velocity_properties(self) -> None:
 
         num_points = np.ceil(len(self._velocity_set.unique_coordinates) / 2)
         self._velocity_qubits_per_dim = int(np.ceil(np.log2(num_points)))
@@ -122,7 +121,7 @@ class LBMState:
         if self._velocity_qubits_per_dim < 1:
             self._velocity_qubits_per_dim = 1
 
-    def _init_registers(self):
+    def _init_registers(self) -> None:
         self._boundary_ancillas = []
         for _ in self._boundary_ancilla_indexes.keys():
             self._boundary_ancillas.append(QuantumBool())
@@ -141,12 +140,12 @@ class LBMState:
 
     def set_registers(
         self,
-        position_register: list,
-        velocity_register: list,
-        sign_register: list,
-        boundary_ancillas: list,
-        oracle_ancillas: list = [],
-    ):
+        position_register: list[QuantumModulus],
+        velocity_register: list[QuantumFloat],
+        sign_register: list[QuantumBool],
+        boundary_ancillas: list[QuantumBool],
+        oracle_ancillas: list[QuantumBool] = [],
+    ) -> None:
         self._positions_register = position_register
         self._velocity_register = velocity_register
         self._sign_register = sign_register
@@ -159,7 +158,11 @@ class LBMState:
     ################################
     #   Initialization Functions   #
     ################################
-    def set_initial_state(self, bubble_roi: RegionOfInterest, velocity: ArrayLike):
+    def set_initial_state(
+        self,
+        bubble_roi: RegionOfInterest,
+        velocity: np.typing.NDArray[np.int_] | list[int],
+    ) -> None:
         """
         Stores the initial configuration.
         Does NOT apply gates yet.
@@ -352,7 +355,7 @@ class LBMState:
             grid[coords] = val
         return grid
 
-    def copy(self):
+    def copy(self) -> "LBMState":
         """
         Returns a copy of the current state.
         """
@@ -363,7 +366,15 @@ class LBMState:
             lbm_state.set_initial_state(self._initial_bubble, self._initial_velocity)
         return lbm_state
 
-    def get_clean_registers(self, create_oracle_ancillas=False):
+    def get_clean_registers(
+        self, create_oracle_ancillas=False
+    ) -> tuple[
+        list[QuantumModulus],
+        list[QuantumBool],
+        list[QuantumFloat],
+        list[QuantumBool],
+        list[QuantumBool],
+    ]:
         """
         Returns freshly initialized registers tuple of the
         position, sign, velocity, and boundary ancilla registers.
@@ -410,7 +421,7 @@ class LBMState:
         """
         return user_coord + self._boundary_offsets[dimension]
 
-    def encoded_to_user_coord(self, encoded_coord, dimension):
+    def encoded_to_user_coord(self, encoded_coord: int, dimension: int) -> int:
         """Converts register index back to user 0-indexed coord.
 
         Args:
@@ -422,7 +433,9 @@ class LBMState:
         """
         return encoded_coord - self._boundary_offsets[dimension]
 
-    def get_encoded_bounds(self, user_bounds):
+    def get_encoded_bounds(
+        self, user_bounds: list[tuple[int, int]]
+    ) -> list[tuple[int, int]]:
         """Converts list of user (min, max) tuples to encoded indices.
 
         Args:

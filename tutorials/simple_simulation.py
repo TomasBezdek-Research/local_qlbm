@@ -1,5 +1,6 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 """
 Simple LBM simulation tutorial.
@@ -75,7 +76,7 @@ def run_simulation_step_by_step():
     grid.set_initial_state(initial_bubble, initial_velocity)
 
     # Apply initial conditions
-    grid.apply_conditions()
+    grid.initialize()
 
     # Iterate through the simulation
     for _ in range(2):

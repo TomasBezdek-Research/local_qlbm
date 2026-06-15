@@ -1,5 +1,7 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.api.measurement import measure_density
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 """
 This tutorial demonstrates how to use the region density amplification feature of the LBM grid.
@@ -48,12 +50,12 @@ if __name__ == "__main__":
     print("Region density (fast):", den)
 
     # Estimate region density using precise method - IQAE (may be slower)
-    grid.amplify_region(
+    pos, _, _ = grid.amplify_region(
         roi,
         amplification_iterations=1,
         simulation_iterations=num_iterations,
     )
 
     # Measure density after amplification
-    amp_mes = grid.measure_density()
+    amp_mes = measure_density(config=grid.config, position_register=pos)
     print("Amplified region density:", amp_mes)

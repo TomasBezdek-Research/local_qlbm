@@ -1,3 +1,4 @@
+from os import PathLike
 from pathlib import Path
 
 import numpy as np
@@ -53,7 +54,7 @@ class LBMGrid:
     ############################
     #   Low level simulation   #
     ############################
-    def run_simulation(self, iterations=1, init=True):
+    def run_simulation(self, iterations: int = 1, init: bool = True) -> None:
         """Runs the simulation for a given number of iterations.
 
         Args:
@@ -62,15 +63,15 @@ class LBMGrid:
         """
         self._engine.run_simulation(iterations, init)
 
-    def apply_conditions(self):
+    def apply_conditions(self) -> None:
         """Sets initial conditions for the simulation"""
         self._engine.apply_initialization()
 
-    def stream(self):
+    def stream(self) -> None:
         """One stream step in simulation"""
         self._engine.stream()
 
-    def apply_boundary_conditions(self):
+    def apply_boundary_conditions(self) -> None:
         """Applies boundary conditions to the simulation"""
         self._engine.apply_boundary_conditions()
 
@@ -79,11 +80,11 @@ class LBMGrid:
     #########################################
     def run_simulation_with_visualization(
         self,
-        filename,
-        iterations=1,
-        init=True,
-        time_steps_per_frame=1,
-    ):
+        filename: PathLike | str,
+        iterations: int = 1,
+        init: bool = True,
+        time_steps_per_frame: int = 1,
+    ) -> None:
         """Runs the simulation for a given number of iterations with visualization."""
         full_path = Path(filename)
         target_dir = full_path.parent
@@ -110,8 +111,12 @@ class LBMGrid:
             )
 
     def _export_to_vtk(
-        self, filename, data, spacing=(1.0, 1.0, 1.0), origin=(0.0, 0.0, 0.0)
-    ):
+        self,
+        filename: PathLike | str,
+        data: np.ndarray,
+        spacing: tuple[float, float, float] = (1.0, 1.0, 1.0),
+        origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> None:
         shape = data.shape
         dims = len(shape)
 
@@ -244,7 +249,7 @@ class LBMGrid:
             )
         )
 
-    def fast_region_density_estimate(self, roi: RegionOfInterest):
+    def fast_region_density_estimate(self, roi: RegionOfInterest) -> dict:
         return self._analyzer.fast_region_density_estimate(roi)
 
     ####################
@@ -293,10 +298,10 @@ class LBMGrid:
     ######################
     #   Visualization    #
     ######################
-    def results_to_numpy(self, simulation_results):
+    def results_to_numpy(self, simulation_results: dict) -> np.ndarray:
         return self._state.results_to_numpy(simulation_results)
 
-    def physical_density_to_numpy(self, physical_density):
+    def physical_density_to_numpy(self, physical_density: dict) -> np.ndarray:
         """
         Converts the 'cells' dict from analyze_region into a dense NumPy array.
 

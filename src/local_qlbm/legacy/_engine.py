@@ -1,5 +1,13 @@
 import numpy as np
-from qrisp import QuantumBool, QuantumVariable, auto_uncompute, mcx, prepare
+from qrisp import (
+    QuantumBool,
+    QuantumFloat,
+    QuantumModulus,
+    QuantumVariable,
+    auto_uncompute,
+    mcx,
+    prepare,
+)
 
 from ._state import BCCombination, LBMState
 from .types import BoundaryCondition
@@ -31,7 +39,7 @@ class LBMEngine:
         sign_register: list,
         boundary_ancillas: list,
         oracle_ancillas: list = [],
-    ):
+    ) -> None:
         """
         Applies the gates to set the registers to t=0.
         This is called internally by IQAE/AA.
@@ -45,7 +53,7 @@ class LBMEngine:
         )
         self.apply_initialization()
 
-    def apply_initialization(self):
+    def apply_initialization(self) -> None:
         """
         Applies the gates to set the registers to t=0.
         This is called internally by IQAE/AA.
@@ -109,7 +117,9 @@ class LBMEngine:
             full_statevector,
         )
 
-    def _set_global_velocity(self, velocity_vector):
+    def _set_global_velocity(
+        self, velocity_vector: np.typing.NDArray[np.int_] | list[int]
+    ) -> None:
         """
         Sets the velocity u for the transport equation.
         velocity_vector: list of floats/ints like [1, -1]
@@ -139,7 +149,7 @@ class LBMEngine:
     ###############################
     #   Simulation Functions    #
     ###############################
-    def run_simulation(self, iterations=1, init=True):
+    def run_simulation(self, iterations: int = 1, init: bool = True) -> None:
         """
         Run the simulation for a given number of iterations.
 
@@ -155,14 +165,14 @@ class LBMEngine:
 
     def run_simulation_external_registers(
         self,
-        position_register: list,
-        velocity_register: list,
-        sign_register: list,
-        boundary_ancillas: list,
-        oracle_ancillas: list = [],
-        iterations=1,
-        init=False,
-    ):
+        position_register: list[QuantumModulus],
+        velocity_register: list[QuantumFloat],
+        sign_register: list[QuantumBool],
+        boundary_ancillas: list[QuantumBool],
+        oracle_ancillas: list[QuantumBool] = [],
+        iterations: int = 1,
+        init: bool = False,
+    ) -> None:
         """
         Run the simulation for a given number of iterations.
 
@@ -184,7 +194,7 @@ class LBMEngine:
             self.stream()
             self.apply_boundary_conditions()
 
-    def stream(self):
+    def stream(self) -> None:
         """
         Do one streaming step.
         """
@@ -196,7 +206,7 @@ class LBMEngine:
                 self._state.positions_register[d] -= self._state.velocity_register[d]
 
     @auto_uncompute
-    def apply_boundary_conditions(self):
+    def apply_boundary_conditions(self) -> None:
         """
         Aplly the boundary conditions to the positions.
         """
@@ -216,7 +226,7 @@ class LBMEngine:
             return
 
     @auto_uncompute
-    def _apply_bc_slip(self):
+    def _apply_bc_slip(self) -> None:
         """
         Apply the boundary conditions to the positions.
         Used when if some BC is Slip and rest Slip or Periodic.
@@ -241,7 +251,7 @@ class LBMEngine:
             self._comes_from_boundary(d)
 
     @auto_uncompute
-    def _apply_bc_bb(self):
+    def _apply_bc_bb(self) -> None:
         """
         Apply the boundary conditions to the positions.
         Used when if some BC is Bounce Back and rest Bounce Back or Periodic.
@@ -281,7 +291,7 @@ class LBMEngine:
             self._comes_from_boundary(d)
 
     @auto_uncompute
-    def _apply_bc_bb_slip(self):
+    def _apply_bc_bb_slip(self) -> None:
         """
         Apply the boundary conditions to the positions.
         Used when if some BC is Bounce Back, some Slip and rest Bounce Back, Slip or Periodic.
@@ -359,7 +369,7 @@ class LBMEngine:
     #########################
 
     @auto_uncompute
-    def _is_out_boundary(self, dim: int):
+    def _is_out_boundary(self, dim: int) -> None:
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
 
@@ -375,7 +385,7 @@ class LBMEngine:
             self._is_out_boundary_single_layer(dim)
 
     @auto_uncompute
-    def _is_out_boundary_single_layer(self, dim: int):
+    def _is_out_boundary_single_layer(self, dim: int) -> None:
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
 
@@ -396,7 +406,7 @@ class LBMEngine:
             ].flip()
 
     @auto_uncompute
-    def _is_out_boundary_multi_layer(self, dim: int):
+    def _is_out_boundary_multi_layer(self, dim: int) -> None:
         """
         Flips the boundary ancilla for the given dimension if the position is out of bounds.
 
@@ -415,7 +425,7 @@ class LBMEngine:
             ].flip()
 
     @auto_uncompute
-    def _comes_from_boundary(self, dim: int):
+    def _comes_from_boundary(self, dim: int) -> None:
         """
         Flips the boundary ancilla for the given dimension if the position is coming out of bounds.
 

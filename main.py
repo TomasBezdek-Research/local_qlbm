@@ -1,5 +1,6 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
 
 if __name__ == "__main__":
     grid = LBMGrid(
@@ -13,12 +14,12 @@ if __name__ == "__main__":
     )
     initial_bubble = RegionOfInterest.from_bounds(
         bounds=[
-            (0, 1),
-            (0, 1),
-            (0, 1),
+            (0, 2),
+            (0, 2),
+            (0, 2),
         ]
     )
     initial_velocity = [1, 1, 0]
     grid.set_initial_state(initial_bubble, initial_velocity)
-    grid.run_simulation(iterations=20, init=True)
+    grid.run_simulation(iterations=3, init=True)
     print(grid.measure_density())

@@ -1,7 +1,9 @@
 from pathlib import Path
 
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from local_qlbm.api.grid import LBMGrid
+from local_qlbm.config.enums import BoundaryCondition, VelocitySet
+from local_qlbm.config.roi import RegionOfInterest
+from local_qlbm.io.vtk import clear_vtk_series
 
 """
 3D LBM Visualization Tutorial
@@ -39,6 +41,8 @@ if __name__ == "__main__":
     )
     initial_velocity = [1, -1, -1]
     grid.set_initial_state(initial_bubble, initial_velocity)
+
+    clear_vtk_series(output_path)
 
     # Run the simulation with visualization
     grid.run_simulation_with_visualization(output_path, iterations=20, init=True)

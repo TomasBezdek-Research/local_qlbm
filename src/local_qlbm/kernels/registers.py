@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+from qrisp import QuantumBool, QuantumFloat, QuantumModulus
+
+from local_qlbm.config.model import LBMConfig
+
+
+def allocate_registers(
+    config: LBMConfig,
+    create_oracle_ancillas: bool = False,
+) -> tuple[
+    list[QuantumModulus],
+    list[QuantumBool],
+    list[QuantumFloat],
+    list[QuantumBool],
+    list[QuantumBool],
+]:
+    """
+    Allocate fresh quantum registers for the LBM simulation.
+
+    Returns:
+        (
+            position_register,
+            sign_register,
+            velocity_register,
+            boundary_ancillas,
+            oracle_ancillas,
+        )
+    """
+
+    # ======== POSITION REGISTER ========
+
+    position_register = [
+        QuantumModulus(int(size)) for size in config.positions_register_shape
+    ]
+
+    # ======== SIGN REGISTER ========
+
+    sign_register = [QuantumBool() for _ in range(config.dimensions)]
+
+    # ======== VELOCITY REGISTER ========
+
+    velocity_register = [
+        QuantumFloat(config.velocity_qubits_per_dim, signed=False)
+        for _ in range(config.dimensions)
+    ]
+
+    # ======== BOUNDARY ANCILLAS ========
+
+    boundary_ancillas = [QuantumBool() for _ in config.boundary_ancilla_indexes]
+
+    # ======== ORACLE ANCILLAS ========
+
+    if create_oracle_ancillas:
+        oracle_ancillas = [QuantumBool() for _ in range(config.dimensions)]
+    else:
+        oracle_ancillas = []
+
+    return (
+        position_register,
+        sign_register,
+        velocity_register,
+        boundary_ancillas,
+        oracle_ancillas,
+    )
