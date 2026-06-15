@@ -11,7 +11,7 @@ from qrisp import (
     z,
 )
 
-from local_qlbm.api.measurement import measure_density
+from local_qlbm.analysis.measurement import measure_density
 from local_qlbm.config.model import LBMConfig
 from local_qlbm.config.roi import RegionOfInterest
 from local_qlbm.kernels.engine_jasp import (

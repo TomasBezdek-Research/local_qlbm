@@ -1,5 +1,5 @@
+from local_qlbm.analysis.measurement import measure_density
 from local_qlbm.api.grid import LBMGrid
-from local_qlbm.api.measurement import measure_density
 from local_qlbm.config.enums import BoundaryCondition, VelocitySet
 from local_qlbm.config.roi import RegionOfInterest
 

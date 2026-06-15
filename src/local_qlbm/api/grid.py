@@ -8,7 +8,7 @@ from numpy.typing import ArrayLike
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus
 
 from local_qlbm.analysis.analyzer import LBMAnalyzer
-from local_qlbm.api.measurement import full_measurement, measure_density
+from local_qlbm.analysis.measurement import full_measurement, measure_density
 from local_qlbm.config.enums import BoundaryCondition, VelocitySet
 from local_qlbm.config.model import LBMConfig
 from local_qlbm.config.roi import RegionOfInterest
@@ -225,8 +225,6 @@ class LBMGrid:
         Args:
             shots (int | None, optional): Number of shots to run. Defaults to None.
             backend (object | None, optional): Backend to run the simulation on. Defaults to None.
-            position_register (list[QuantumModulus] | None, optional): Position register to measure. Defaults to None.
-            If None, the grid position register is used.
 
         Returns:
             dict[tuple[int, ...], float]: Dictionary of physical coordinates and their corresponding density.

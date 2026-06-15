@@ -16,8 +16,7 @@ def measure_density(
     Args:
         shots (int | None, optional): Number of shots to run. Defaults to None.
         backend (object | None, optional): Backend to run the simulation on. Defaults to None.
-        position_register (list[QuantumModulus] | None, optional): Position register to measure. Defaults to None.
-        If None, the grid position register is used.
+        position_register (list[QuantumModulus]): Position register to measure.
 
     Returns:
         dict[tuple[int, ...], float]: Dictionary of physical coordinates and their corresponding density.
