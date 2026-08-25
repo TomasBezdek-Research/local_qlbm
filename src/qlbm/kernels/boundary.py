@@ -8,8 +8,8 @@ from qrisp import (
     mcx,
 )
 
-from local_qlbm.config.enums import BCCombination, BoundaryCondition
-from local_qlbm.config.model import LBMConfig
+from qlbm.config.enums import BCCombination, BoundaryCondition
+from qlbm.config.model import LBMConfig
 
 
 def apply_boundary_conditions(

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus
 
-from local_qlbm.config.model import LBMConfig
-from local_qlbm.kernels.boundary import apply_boundary_conditions
-from local_qlbm.kernels.initialization import initialize_state
-from local_qlbm.kernels.registers import allocate_registers
-from local_qlbm.kernels.streaming import streaming_step
+from qlbm.config.model import LBMConfig
+from qlbm.kernels.boundary import apply_boundary_conditions
+from qlbm.kernels.initialization import initialize_state
+from qlbm.kernels.registers import allocate_registers
+from qlbm.kernels.streaming import streaming_step
 
 
 def simulation_step(

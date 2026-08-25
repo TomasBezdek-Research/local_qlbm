@@ -1,26 +1,31 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus
+from qrisp.interface.measurement_result import MultiMeasurementResult
 
-from local_qlbm.analysis.analyzer import LBMAnalyzer
-from local_qlbm.analysis.measurement import full_measurement, measure_density
-from local_qlbm.config.enums import BoundaryCondition, VelocitySet
-from local_qlbm.config.model import LBMConfig
-from local_qlbm.config.roi import RegionOfInterest
-from local_qlbm.io.vtk import export_density_to_vtk
-from local_qlbm.kernels.boundary import apply_boundary_conditions
-from local_qlbm.kernels.engine_jasp import (
+from local_measurement.region_measurement import RegionEstimationInput
+from qlbm.config.enums import BoundaryCondition, VelocitySet
+from qlbm.config.model import LBMConfig
+from qlbm.config.roi import RegionOfInterest
+from qlbm.io.vtk import export_density_to_vtk
+from qlbm.kernels.boundary import apply_boundary_conditions
+from qlbm.kernels.engine_jasp import (
     initialize_and_run,
     initialize_only,
     run_simulation,
     simulation_step,
 )
-from local_qlbm.kernels.streaming import streaming_step
+from qlbm.kernels.initialization import initialize_state
+from qlbm.kernels.streaming import streaming_step
+from qlbm.measurement.measurement import full_measurement, measure_density
+from qlbm.region_oracle.oracle import get_phase_oracle, get_region_oracle
 
 
 class LBMGrid:
@@ -245,7 +250,7 @@ class LBMGrid:
         self,
         shots: int | None = None,
         backend: object | None = None,
-    ) -> dict[tuple[object, ...], float]:
+    ) -> MultiMeasurementResult:
         """
         Measure positions + signs + velocity registers together.
         """
@@ -265,6 +270,143 @@ class LBMGrid:
             shots=shots,
             backend=backend,
         )
+
+    # ======================================================
+    # CALLABLE RETURN UTILITIES
+    # ======================================================
+    def state_function(
+        self,
+        simulation_iterations: int = 1,
+    ) -> Callable[..., None]:
+        def wrapper(*flat_args):
+            d = self.dimensions
+
+            pos = list(flat_args[0:d])
+            sign = list(flat_args[d : 2 * d])
+            vel = list(flat_args[2 * d : 3 * d])
+            anc = list(flat_args[3 * d : 4 * d])
+
+            initialize_state(self.config, pos, vel, sign)
+
+            run_simulation(
+                self.config,
+                pos,
+                vel,
+                sign,
+                anc,
+                iterations=simulation_iterations,
+            )
+
+        return wrapper
+
+    def qargs_factory(
+        self,
+        create_oracle_ancillas: bool = True,
+    ) -> Callable[[], tuple[Any, ...]]:
+        def factory():
+            from qlbm.kernels.registers import allocate_registers
+
+            pos, sign, vel, anc, oracle = allocate_registers(
+                self.config,
+                create_oracle_ancillas=create_oracle_ancillas,
+            )
+
+            target = QuantumBool()
+
+            return (
+                *pos,
+                *sign,
+                *vel,
+                *anc,
+                *oracle,
+                target,
+            )
+
+        return factory
+
+    def flag_oracle(
+        self,
+        roi: RegionOfInterest,
+    ) -> Callable[..., None]:
+        encoded_roi = self.config.encode_roi(roi)
+
+        def oracle(*flat_args):
+            d = self.dimensions
+
+            pos = list(flat_args[0:d])
+            oracle_ancillas = list(flat_args[-1 - d : -1])
+            target = flat_args[-1]
+
+            get_region_oracle(
+                config=self.config,
+                roi=encoded_roi,
+                position_register=pos,
+                oracle_ancillas=oracle_ancillas,
+                target_qubit=target,
+            )
+
+        return oracle
+
+    def phase_oracle(
+        self,
+        roi: RegionOfInterest,
+    ) -> Callable[..., None]:
+
+        encoded_roi = self.config.encode_roi(roi)
+
+        def oracle(*flat_args):
+            d = self.dimensions
+
+            pos = list(flat_args[0:d])
+            oracle_ancillas = list(flat_args[-1 - d : -1])
+
+            target = flat_args[-1]
+
+            get_phase_oracle(
+                config=self.config,
+                roi=encoded_roi,
+                position_register=pos,
+                oracle_ancillas=oracle_ancillas,
+                target_qubit=target,
+            )
+
+        return oracle
+
+    def classical_classifier(
+        self,
+        roi: RegionOfInterest,
+    ) -> Callable[..., bool]:
+        def wrapper(point) -> bool:
+            return roi.contains(point)
+
+        return wrapper
+
+    def region_estimation_problem(
+        self,
+        roi: RegionOfInterest,
+        simulation_iterations: int = 1,
+    ) -> RegionEstimationInput:
+
+        return RegionEstimationInput(
+            qargs=self.qargs_factory(),
+            state_function=self.state_function(
+                simulation_iterations=simulation_iterations,
+            ),
+            flag_oracle=self.flag_oracle(roi),
+        )
+
+    def sampling_measurement_function(
+        self,
+        shots: int | None = None,
+        backend: object | None = None,
+    ) -> Callable[..., dict[tuple[int, ...], float]]:
+        def wrapper(
+            *flat_args, shots: int | None = None, backend: object | None = None
+        ) -> dict[tuple[int, ...], float]:
+            pos = list(flat_args[: self.dimensions])
+            return measure_density(self._config, pos, shots, backend)
+
+        return wrapper
 
     # ======================================================
     # NUMPY / EXPORT UTILITIES
@@ -337,91 +479,6 @@ class LBMGrid:
                 f"{filename}_{(time_steps_per_frame * (i + 1)):03d}",
                 density_grid,
             )
-
-    # ======================================================
-    # ANALYSIS PLACEHOLDERS
-    # ======================================================
-
-    def analyze_region(
-        self,
-        roi: RegionOfInterest,
-        simulation_iterations: int = 1,
-        eps: float = 0.01,
-        alpha: float = 0.05,
-        shots: int | None = None,
-        backend: object | None = None,
-    ) -> dict:
-        analyzer = LBMAnalyzer(self._config)
-        return analyzer.analyze_region(
-            roi=roi,
-            simulation_iterations=simulation_iterations,
-            eps=eps,
-            alpha=alpha,
-            shots=shots,
-            backend=backend,
-        )
-
-    def amplify_region(
-        self,
-        roi: RegionOfInterest,
-        amplification_iterations: int = 1,
-        simulation_iterations: int = 1,
-    ) -> tuple[
-        list,
-        list,
-        list,
-    ]:
-        """
-        Amplify the region of interest using the LBM analyzer.
-
-        Args:
-            roi: The region of interest to amplify.
-            amplification_iterations: The number of amplification iterations to perform.
-            simulation_iterations: The number of simulation iterations to perform.
-
-        Returns:
-            The amplified region as a tuple of position, sign, and velocity registers.
-        """
-        analyzer = LBMAnalyzer(self._config)
-        return analyzer.amplify_region(
-            roi=roi,
-            amplification_iterations=amplification_iterations,
-            simulation_iterations=simulation_iterations,
-        )
-
-    def estimate_region_density(
-        self,
-        roi: RegionOfInterest,
-        simulation_iterations: int = 1,
-        eps: float = 0.01,
-        alpha: float = 0.05,
-        shots: int | None = None,
-        backend: object | None = None,
-    ) -> float:
-        analyzer = LBMAnalyzer(self._config)
-        return analyzer.estimate_region_density(
-            roi=roi,
-            simulation_iterations=simulation_iterations,
-            eps=eps,
-            alpha=alpha,
-            shots=shots,
-            backend=backend,
-        )
-
-    def fast_region_density_estimate(
-        self,
-        roi: RegionOfInterest,
-        simulation_iterations: int = 1,
-        shots: int | None = None,
-        backend: object | None = None,
-    ) -> dict:
-        analyzer = LBMAnalyzer(self._config)
-        return analyzer.fast_region_density_estimate(
-            roi=roi,
-            simulation_iterations=simulation_iterations,
-            shots=shots,
-            backend=backend,
-        )
 
     # ======================================================
     # PROPERTIES

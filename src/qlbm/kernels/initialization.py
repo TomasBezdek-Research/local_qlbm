@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus, prepare
 
-from local_qlbm.config.model import LBMConfig
-from local_qlbm.config.roi import RegionOfInterest
+from qlbm.config.model import LBMConfig
+from qlbm.config.roi import RegionOfInterest
 
 
 def initialize_state(

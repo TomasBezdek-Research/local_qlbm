@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus
 
-from local_qlbm.config.model import LBMConfig
+from qlbm.config.model import LBMConfig
 
 
 def allocate_registers(

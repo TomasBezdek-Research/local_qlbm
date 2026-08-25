@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 
-
 @dataclass(frozen=True)
 class RegionOfInterest:
     _bounds: list[tuple[int, int]] | None = None

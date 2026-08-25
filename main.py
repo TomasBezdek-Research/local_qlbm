@@ -1,6 +1,6 @@
-from local_qlbm.api.grid import LBMGrid
-from local_qlbm.config.enums import BoundaryCondition, VelocitySet
-from local_qlbm.config.roi import RegionOfInterest
+from qlbm.api.grid import LBMGrid
+from qlbm.config.enums import BoundaryCondition, VelocitySet
+from qlbm.config.roi import RegionOfInterest
 
 if __name__ == "__main__":
     grid = LBMGrid(

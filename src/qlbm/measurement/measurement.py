@@ -1,6 +1,7 @@
 from qrisp import QuantumBool, QuantumFloat, QuantumModulus, multi_measurement
+from qrisp.interface.measurement_result import MultiMeasurementResult
 
-from local_qlbm.config.model import LBMConfig
+from qlbm.config.model import LBMConfig
 
 
 def measure_density(
@@ -52,7 +53,7 @@ def full_measurement(
     velocity_register: list[QuantumFloat],
     shots: int | None = None,
     backend: object | None = None,
-) -> dict[tuple[object, ...], float]:
+) -> MultiMeasurementResult:
     """
     Measure positions + signs + velocity registers together.
     """
