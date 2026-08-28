@@ -8,7 +8,7 @@ from local_measurement.region_measurement import (
 from local_measurement.region_measurement_analysis import (
     estimate_region_probability_analysis,
 )
-from paper_experiments.circut_analysis import analyze_circuit
+from paper_experiments.local_measurement.circut_analysis import analyze_circuit
 from qlbm.api.grid import LBMGrid
 from qlbm.config.enums import BoundaryCondition, VelocitySet
 from qlbm.config.roi import RegionOfInterest
