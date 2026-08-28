@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from local_qlbm.api.grid import LBMGrid
-from local_qlbm.config.enums import BoundaryCondition, VelocitySet
-from local_qlbm.config.roi import RegionOfInterest
-from local_qlbm.io.vtk import clear_vtk_series
+from qlbm.api.grid import LBMGrid
+from qlbm.config.enums import BoundaryCondition, VelocitySet
+from qlbm.config.roi import RegionOfInterest
+from qlbm.io.vtk import clear_vtk_series
 
 """
 3D LBM Visualization Tutorial
