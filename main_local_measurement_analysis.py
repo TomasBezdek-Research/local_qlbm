@@ -16,7 +16,7 @@ from qlbm.config.roi import RegionOfInterest
 
 def run_analysis_all(iterations: int = 1):
     grid = LBMGrid(
-        grid_size=[4, 4],
+        grid_size=[32, 32],
         velocity_set=VelocitySet.D2Q9,
         boundary_conditions=[BoundaryCondition.PERIODIC, BoundaryCondition.PERIODIC],
     )
@@ -25,7 +25,7 @@ def run_analysis_all(iterations: int = 1):
     init_velocity = [1, 1]
     eps = 0.05
     alpha = 0.1
-    shots = 1000
+    shots = 10
 
     for method in RegionMeasurementMethod:
         run_analysis(
@@ -101,31 +101,31 @@ def run_analysis(
 
 
 if __name__ == "__main__":
-    # run_analysis_all(iterations=0)
+    run_analysis_all(iterations=1)
 
-    grid = LBMGrid(
-        grid_size=[4, 4],
-        velocity_set=VelocitySet.D2Q9,
-        boundary_conditions=[BoundaryCondition.PERIODIC, BoundaryCondition.PERIODIC],
-    )
-    init_roi = RegionOfInterest.from_bounds(bounds=[(0, 2), (0, 2)])
-    measure_roi = RegionOfInterest.from_points(points={(1, 1), (2, 2), (1, 2), (2, 1)})
-    init_velocity = [1, 1]
-    eps = 0.02
-    alpha = 0.1
-    shots = 1000
-    method = RegionMeasurementMethod.IQAE
+    # grid = LBMGrid(
+    #     grid_size=[4, 4],
+    #     velocity_set=VelocitySet.D2Q9,
+    #     boundary_conditions=[BoundaryCondition.PERIODIC, BoundaryCondition.PERIODIC],
+    # )
+    # init_roi = RegionOfInterest.from_bounds(bounds=[(0, 2), (0, 2)])
+    # measure_roi = RegionOfInterest.from_points(points={(1, 1), (2, 2), (1, 2), (2, 1)})
+    # init_velocity = [1, 1]
+    # eps = 0.02
+    # alpha = 0.1
+    # shots = 1000
+    # method = RegionMeasurementMethod.IQAE
 
-    # run_analysis_all()
+    # # run_analysis_all()
 
-    run_analysis(
-        grid=grid,
-        method=method,
-        init_roi=init_roi,
-        measure_roi=measure_roi,
-        init_velocity=init_velocity,
-        eps=eps,
-        alpha=alpha,
-        shots=shots,
-        iterations=1,
-    )
+    # run_analysis(
+    #     grid=grid,
+    #     method=method,
+    #     init_roi=init_roi,
+    #     measure_roi=measure_roi,
+    #     init_velocity=init_velocity,
+    #     eps=eps,
+    #     alpha=alpha,
+    #     shots=shots,
+    #     iterations=1,
+    # )

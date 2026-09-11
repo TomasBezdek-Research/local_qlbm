@@ -14,6 +14,7 @@ from local_measurement.region_measurement import RegionEstimationInput
 from qlbm.config.enums import BoundaryCondition, VelocitySet
 from qlbm.config.model import LBMConfig
 from qlbm.config.roi import RegionOfInterest
+from qlbm.io.ploting import plot_res, plot_res_roi
 from qlbm.io.vtk import export_density_to_vtk
 from qlbm.kernels.boundary import apply_boundary_conditions
 from qlbm.kernels.engine_jasp import (
@@ -440,6 +441,79 @@ class LBMGrid:
             grid[coords] = val
 
         return grid
+
+    def plot_numpy_results(
+        self,
+        numpy_results: np.ndarray,
+        vmin: float | None = None,
+        vmax: float | None = None,
+        figsize=(8, 6),
+        colorbar_orientation="vertical",
+        save_path=None,
+        fontsize: int = 15,
+        colorbar_only: bool = False,
+    ) -> None:
+        """
+        Plot the results as a heatmap using matplotlib.
+
+        Args:
+            numpy_results (np.ndarray): The numpy array of results to plot.
+            vmin (float, optional): The lower bound of the color scale.
+            vmax (float, optional): The upper bound of the color scale.
+            figsize (tuple): Width and height of the figure in inches.
+            colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
+            save_path (str, optional): File path to save the image (e.g., 'plot.png').
+            fontsize (int): Fontsize for ticks and legend.
+            colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
+        """
+        plot_res(
+            numpy_results,
+            vmin=vmin,
+            vmax=vmax,
+            figsize=figsize,
+            colorbar_orientation=colorbar_orientation,
+            save_path=save_path,
+            fontsize=fontsize,
+            colorbar_only=colorbar_only,
+        )
+
+    def plot_numpy_results_roi(
+        self,
+        numpy_results: np.ndarray,
+        vmin: float | None = None,
+        vmax: float | None = None,
+        figsize=(8, 6),
+        colorbar_orientation="vertical",
+        save_path=None,
+        fontsize: int = 15,
+        colorbar_only: bool = False,
+        roi: RegionOfInterest | None = None,
+    ) -> None:
+        """
+        Plot the results as a heatmap using matplotlib.
+
+        Args:
+            numpy_results (np.ndarray): The numpy array of results to plot.
+            vmin (float, optional): The lower bound of the color scale.
+            vmax (float, optional): The upper bound of the color scale.
+            figsize (tuple): Width and height of the figure in inches.
+            colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
+            save_path (str, optional): File path to save the image (e.g., 'plot.png').
+            fontsize (int): Fontsize for ticks and legend.
+            colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
+            roi (RegionOfInterest, optional): Region of interest to highlight.
+        """
+        plot_res_roi(
+            numpy_results,
+            vmin=vmin,
+            vmax=vmax,
+            figsize=figsize,
+            colorbar_orientation=colorbar_orientation,
+            save_path=save_path,
+            fontsize=fontsize,
+            colorbar_only=colorbar_only,
+            roi=roi,
+        )
 
     def run_simulation_with_visualization(
         self,
