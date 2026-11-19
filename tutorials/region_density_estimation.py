@@ -38,11 +38,11 @@ if __name__ == "__main__":
         flag_oracle=grid.flag_oracle(measure_roi),
         phase_oracle=grid.phase_oracle(measure_roi),
         classical_classifier=grid.classical_classifier(measure_roi),
-        sampling_measurement=grid.sampling_measurement_function(shots=1000),
+        sampling_measurement=grid.sampling_measurement_function(),
     )
 
     estimation_options = EstimationOptions(
-        shots=100,
+        shots=1000,
         eps=0.1,
         alpha=0.05,
     )

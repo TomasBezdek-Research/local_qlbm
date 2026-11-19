@@ -12,15 +12,16 @@ def streaming_step(
     sign_register: list[QuantumBool],
 ) -> None:
     """
-    Perform one LBM streaming (advection) step.
+    Perform one LBM streaming step.
 
-    Updates positions according to velocity and direction.
+    Each position register is shifted by the corresponding velocity magnitude
+    in the direction encoded by its sign qubit.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
+        config: LBM configuration defining the spatial dimensions.
+        position_register: Position registers to update.
+        velocity_register: Velocity-magnitude registers for each dimension.
+        sign_register: Qubits encoding the velocity direction in each dimension.
     """
 
     for d in range(config.dimensions):

@@ -11,10 +11,11 @@ from .roi import RegionOfInterest
 @dataclass
 class LBMConfig:
     """
-    Classical configuration of the Quantum LBM simulation.
+    Classical configuration of a quantum LBM simulation.
 
-    Contains ONLY static data and derived parameters.
-    No quantum registers are stored here.
+    Stores the static simulation parameters, initial conditions, and derived
+    quantities required to construct the quantum registers and kernels.
+    No quantum registers are stored in this class.
     """
 
     # ======== INPUT PARAMETERS ========
@@ -50,9 +51,7 @@ class LBMConfig:
     # ======== INITIALIZATION ========
 
     def __post_init__(self) -> None:
-        """
-        Initialize derived parameters and validate grid dimensions.
-        """
+        """Validate the input configuration and initialize all derived parameters."""
         self.grid_size = np.asarray(self._grid_size_input, dtype=int)
         self.dimensions = self.grid_size.size
 
@@ -62,7 +61,6 @@ class LBMConfig:
                 f"velocity set dimensions {self.velocity_set.dimensions}"
             )
 
-        # ✅ Normalize safely
         if not isinstance(self._boundary_conditions_input, list):
             bc_list = [self._boundary_conditions_input] * self.dimensions
         else:
@@ -74,10 +72,8 @@ class LBMConfig:
                 f"({self.dimensions}), got {len(bc_list)}"
             )
 
-        # ✅ assign final type-safe value
         self.boundary_conditions = bc_list
 
-        # continue...
         self._init_velocity_properties()
         self._init_boundary_properties()
         self._init_bc_combination()
@@ -88,9 +84,7 @@ class LBMConfig:
     # ======== VELOCITY ========
 
     def _init_velocity_properties(self) -> None:
-        """
-        Initialize velocity properties based on the velocity set.
-        """
+        """Determine the number of velocity-magnitude qubits required per dimension."""
         unique_coords = self.velocity_set.unique_coordinates
 
         num_points = int(np.ceil(len(unique_coords) / 2))
@@ -101,16 +95,14 @@ class LBMConfig:
     # ======== BOUNDARIES ========
 
     def _init_boundary_properties(self) -> None:
-        """
-        Initialize boundary properties based on the boundary conditions.
-        """
+        """Compute the coordinate offsets and additional layers for each dimension."""
         offsets: list[int] = []
         layers: list[int] = []
 
         for bc in self.boundary_conditions:
-            if bc.need_offset:
+            if bc.requires_offset:
                 offsets.append(self.velocity_set.offset)
-                layers.append(self.velocity_set.aditional_layers)
+                layers.append(self.velocity_set.additional_layers)
             else:
                 offsets.append(0)
                 layers.append(0)
@@ -119,9 +111,8 @@ class LBMConfig:
         self.boundary_layers = tuple(layers)
 
     def _init_bc_combination(self) -> None:
-        """
-        Initialize the boundary condition combination.
-        """
+        """Determine which combination of non-periodic boundary conditions is present."""
+
         active_bcs = {
             bc for bc in self.boundary_conditions if bc != BoundaryCondition.PERIODIC
         }
@@ -130,20 +121,19 @@ class LBMConfig:
         has_slip = BoundaryCondition.SIMPLE_SLIP in active_bcs
 
         if has_bb and has_slip:
-            self.bc_combination = BCCombination.BB_AND_SLIP
+            self.bc_combination = BCCombination.BOUNCE_BACK_AND_SIMPLE_SLIP
         elif has_bb:
-            self.bc_combination = BCCombination.BB
+            self.bc_combination = BCCombination.BOUNCE_BACK
         elif has_slip:
-            self.bc_combination = BCCombination.SLIP
+            self.bc_combination = BCCombination.SIMPLE_SLIP
         else:
             self.bc_combination = BCCombination.PERIODIC
 
     # ======== REGISTER SHAPES ========
 
     def _init_register_shapes(self) -> None:
-        """
-        Initialize the register shapes based on grid size and boundary layers.
-        """
+        """Compute the position-register shape including additional boundary layers."""
+
         self.positions_register_shape = tuple(
             (self.grid_size + np.array(self.boundary_layers)).tolist()
         )
@@ -152,7 +142,10 @@ class LBMConfig:
 
     def _init_boundary_ancillas(self) -> None:
         """
-        Initialize the boundary ancilla indexes based on boundary conditions.
+        Assign boundary ancilla indices to dimensions requiring boundary handling.
+
+        `boundary_ancilla_indexes` contains all non-periodic boundaries, while
+        `bb_boundary_ancilla_indexes` contains only bounce-back boundaries.
         """
         self.boundary_ancilla_indexes = {}
         self.bb_boundary_ancilla_indexes = {}
@@ -170,9 +163,7 @@ class LBMConfig:
     # ======== SIZE ========
 
     def _compute_total_size(self) -> None:
-        """
-        Compute the total size of the register based on register shapes and velocity qubits.
-        """
+        """Compute the total number of position, velocity, and sign qubits."""
         position_qubits = sum(
             int(np.ceil(np.log2(size))) for size in self.positions_register_shape
         )
@@ -189,11 +180,11 @@ class LBMConfig:
         velocity: np.ndarray | list[int],
     ) -> None:
         """
-        Set the initial state of the model based on the bubble and velocity.
+        Set the initial region and velocity of the simulation.
 
         Args:
-            bubble (RegionOfInterest): The initial bubble region.
-            velocity (np.ndarray | list[int]): The initial velocity.
+            bubble: Region defining the initial bubble.
+            velocity: Initial velocity vector.
         """
         self.initial_bubble = bubble
         self.initial_velocity = np.array(velocity, dtype=int)
@@ -202,27 +193,27 @@ class LBMConfig:
 
     def user_to_encoded_coord(self, coord: int, dim: int) -> int:
         """
-        Convert a user coordinate to an encoded coordinate based on boundary offsets.
+        Convert a physical-grid coordinate to its internally encoded coordinate.
 
         Args:
-            coord (int): The user coordinate.
-            dim (int): The dimension index.
+            coord: Coordinate in the physical grid.
+            dim: Spatial dimension of the coordinate.
 
         Returns:
-            int: The encoded coordinate.
+            Corresponding encoded coordinate.
         """
         return coord + self.boundary_offsets[dim]
 
     def encoded_to_user_coord(self, coord: int, dim: int) -> int:
         """
-        Convert an encoded coordinate back to a user coordinate based on boundary offsets.
+        Convert an internally encoded coordinate to its physical-grid coordinate.
 
         Args:
-            coord (int): The encoded coordinate.
-            dim (int): The dimension index.
+            coord: Encoded coordinate.
+            dim: Spatial dimension of the coordinate.
 
         Returns:
-            int: The user coordinate.
+            Corresponding physical-grid coordinate.
         """
         return coord - self.boundary_offsets[dim]
 
@@ -231,13 +222,13 @@ class LBMConfig:
         bounds: list[tuple[int, int]],
     ) -> list[tuple[int, int]]:
         """
-        Get the encoded bounds from the user-provided bounds.
+        Convert physical-grid bounds to encoded bounds.
 
         Args:
-            bounds (list): The user-provided bounds.
+            bounds: Bounds for each spatial dimension.
 
         Returns:
-            list: The encoded bounds.
+            Bounds shifted according to the configured boundary offsets.
         """
         return [
             (
@@ -249,13 +240,13 @@ class LBMConfig:
 
     def get_encoded_point(self, point: tuple[int, ...]) -> tuple[int, ...]:
         """
-        Get the encoded point from the user-provided point.
+        Convert a physical-grid point to its encoded coordinates.
 
         Args:
-            point (tuple): The user-provided point.
+            point: Point in physical-grid coordinates.
 
         Returns:
-            tuple: The encoded point.
+            Point shifted according to the configured boundary offsets.
         """
         return tuple(
             self.user_to_encoded_coord(coord, d) for d, coord in enumerate(point)
@@ -266,27 +257,28 @@ class LBMConfig:
         points: set[tuple[int, ...]],
     ) -> set[tuple[int, ...]]:
         """
-        Get the encoded points from the user-provided points.
+        Convert a set of physical-grid points to encoded coordinates.
 
         Args:
-            points (set): The user-provided points.
+            points: Points in physical-grid coordinates.
 
         Returns:
-            set: The encoded points.
+            Points shifted according to the configured boundary offsets.
         """
         return {self.get_encoded_point(p) for p in points}
 
     def encode_roi(self, roi: RegionOfInterest) -> RegionOfInterest:
         """
-        Encode the ROI based on the model's encoding rules.
+        Convert a region of interest from physical-grid to encoded coordinates.
 
-        If the ROI is a subgrid, the bounds are encoded. If it's a point cloud, the points are encoded.
+        For a subgrid ROI, the bounds are encoded. For a point-cloud ROI,
+        each individual point is encoded.
 
         Args:
-            roi (RegionOfInterest): The ROI to encode.
+            roi: Region of interest in physical-grid coordinates.
 
         Returns:
-            RegionOfInterest: The encoded ROI.
+            Equivalent region of interest in encoded coordinates.
         """
         if roi.is_subgrid:
             return RegionOfInterest.from_bounds(self.get_encoded_bounds(roi.bounds))
@@ -296,6 +288,7 @@ class LBMConfig:
     # ======== DISPLAY ========
 
     def __repr__(self) -> str:
+        """Return a concise developer-oriented representation of the configuration."""
         return (
             f"LBMConfig(grid_size={self.grid_size.tolist()}, "
             f"velocity_set={self.velocity_set}, "
@@ -303,6 +296,7 @@ class LBMConfig:
         )
 
     def __str__(self) -> str:
+        """Return a human-readable summary of the simulation configuration."""
         return (
             f"--- LBM Config: {self.name or 'Unnamed'} ---\n"
             f"Dimensions : {self.dimensions}D\n"

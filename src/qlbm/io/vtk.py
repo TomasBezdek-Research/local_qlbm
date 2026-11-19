@@ -14,15 +14,18 @@ def export_density_to_vtk(
     origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> None:
     """
-    Export scalar density field to VTK structured grid.
+    Export a scalar density field as a VTK structured grid.
+
+    One-, two-, and three-dimensional density arrays are supported.
+    Lower-dimensional data is expanded to three dimensions as required
+    by the VTK representation.
 
     Args:
-        filename (PathLike or str): Output filename (without extension).
-        data (np.ndarray): Density grid (1D / 2D / 3D).
-        spacing (tuple): Cell spacing (dx, dy, dz).
-        origin (tuple): Grid origin (x0, y0, z0).
+        filename: Output filename without the VTK extension.
+        data: Density values defined on the grid cells.
+        spacing: Grid spacing along the x, y, and z directions.
+        origin: Coordinates of the grid-cell centers at index zero.
     """
-
     shape = data.shape
     dims = len(shape)
 
@@ -34,6 +37,7 @@ def export_density_to_vtk(
     x0, y0, z0 = origin
 
     def get_coords(n: int, delta: float, start: float) -> np.ndarray:
+        """Return cell-boundary coordinates for one grid dimension."""
         if n > 1:
             return np.arange(n + 1) * delta + (start - 0.5 * delta)
         return np.array([start])
@@ -59,12 +63,13 @@ def clear_vtk_series(
     filename: PathLike[str] | str,
 ) -> None:
     """
-    Remove existing VTK files with given base name.
+    Remove VTK files belonging to an existing output series.
 
-    Useful when re-running simulations with visualization.
+    All `.vts` files in the target directory whose names start with the
+    provided base filename are removed.
 
     Args:
-        filename (PathLike or str): Output filename (without extension).
+        filename: Base filename of the VTK output series, without extension.
     """
 
     full_path = Path(filename)

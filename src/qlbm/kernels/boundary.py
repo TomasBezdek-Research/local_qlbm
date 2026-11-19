@@ -20,22 +20,25 @@ def apply_boundary_conditions(
     boundary_ancillas: list[QuantumBool],
 ) -> None:
     """
-    Apply configured boundary conditions after one streaming step.
+    Apply the configured boundary conditions after a streaming step.
+
+    The boundary-condition implementation is selected from the combination
+    of periodic, simple-slip, and bounce-back boundaries present in the domain.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
+        config: LBM configuration containing the boundary setup.
+        position_register: Position registers after streaming.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary detection.
 
-    Returns:
-        None
+    Raises:
+        ValueError: If the configured boundary-condition combination is unsupported.
     """
     if config.bc_combination == BCCombination.PERIODIC:
         return
 
-    if config.bc_combination == BCCombination.SLIP:
+    if config.bc_combination == BCCombination.SIMPLE_SLIP:
         _apply_bc_slip(
             config,
             position_register,
@@ -45,7 +48,7 @@ def apply_boundary_conditions(
         )
         return
 
-    if config.bc_combination == BCCombination.BB:
+    if config.bc_combination == BCCombination.BOUNCE_BACK:
         _apply_bc_bb(
             config,
             position_register,
@@ -55,7 +58,7 @@ def apply_boundary_conditions(
         )
         return
 
-    if config.bc_combination == BCCombination.BB_AND_SLIP:
+    if config.bc_combination == BCCombination.BOUNCE_BACK_AND_SIMPLE_SLIP:
         _apply_bc_bb_slip(
             config,
             position_register,
@@ -82,15 +85,18 @@ def _apply_bc_slip(
     boundary_ancillas: list[QuantumBool],
 ) -> None:
     """
-    Apply slip boundary conditions.
-    Used when all active BCs are SIMPLE_SLIP (and/or periodic).
+    Apply simple-slip boundary conditions.
+
+    For each non-periodic dimension, states outside the physical domain are
+    reflected by reversing the velocity component normal to that boundary.
+    Periodic dimensions remain unchanged.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
+        config: LBM configuration containing the boundary setup.
+        position_register: Position registers after streaming.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary detection.
     """
     for d in range(config.dimensions):
         if config.boundary_conditions[d] == BoundaryCondition.PERIODIC:
@@ -106,10 +112,10 @@ def _apply_bc_slip(
         anc = boundary_ancillas[config.boundary_ancilla_indexes[d]]
 
         with anc:
-            # Flip direction
+            # Reverse the velocity component normal to the boundary.
             sign_register[d].flip()
 
-            # Reflect position
+            # Move the streamed state back into the physical domain.
             with sign_register[d]:
                 position_register[d] += velocity_register[d]
             with ~sign_register[d]:
@@ -135,14 +141,17 @@ def _apply_bc_bb(
 ) -> None:
     """
     Apply bounce-back boundary conditions.
-    Used when all active BCs are BOUNCE_BACK (and/or periodic).
+
+    After detecting out-of-domain states, the velocity direction is reversed
+    in every spatial dimension and the streamed position is reflected back
+    into the physical domain.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
+        config: LBM configuration containing the boundary setup.
+        position_register: Position registers after streaming.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary detection.
     """
     for d in range(config.dimensions):
         if config.boundary_conditions[d] == BoundaryCondition.PERIODIC:
@@ -157,7 +166,7 @@ def _apply_bc_bb(
 
     apply_bb = QuantumBool()
     apply_bb.flip()
-
+    # Flag states requiring a global bounce-back reflection.
     mcx(
         [anc for anc in boundary_ancillas],
         apply_bb,
@@ -199,15 +208,19 @@ def _apply_bc_bb_slip(
     boundary_ancillas: list[QuantumBool],
 ) -> None:
     """
-    Apply mixed boundary conditions:
-    some dimensions bounce-back, some slip, some periodic.
+    Apply a mixed combination of bounce-back and simple-slip boundaries.
+
+    Bounce-back states have all velocity components reversed. For states that
+    do not require bounce-back, a simple-slip boundary reverses only the
+    velocity component normal to the corresponding boundary. Periodic
+    boundaries require no correction.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
+        config: LBM configuration containing the boundary setup.
+        position_register: Position registers after streaming.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary detection.
     """
     for d in range(config.dimensions):
         if config.boundary_conditions[d] == BoundaryCondition.PERIODIC:
@@ -220,6 +233,7 @@ def _apply_bc_bb_slip(
             d,
         )
 
+    # Detect whether the state requires bounce-back correction.
     apply_bb = QuantumBool()
     apply_bb.flip()
 
@@ -250,6 +264,7 @@ def _apply_bc_bb_slip(
                 with ~sign_register[d]:
                     position_register[d] -= velocity_register[d]
 
+        # Apply slip only when the state is not already handled by bounce-back.
         if bc == BoundaryCondition.SIMPLE_SLIP:
             apply_slip = QuantumBool()
             apply_slip.flip()
@@ -303,14 +318,16 @@ def _is_out_boundary(
     dim: int,
 ) -> None:
     """
-    Flip the boundary ancilla for a dimension if position is outside
-    the physical domain.
+    Flag states lying outside the physical domain along one dimension.
+
+    The boundary ancilla associated with `dim` is flipped when the encoded
+    position lies in a boundary layer outside the physical grid.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
-        dim (int): The dimension index.
+        config: LBM configuration containing the encoded boundary locations.
+        position_register: Position registers to inspect.
+        boundary_ancillas: Ancillas used for boundary detection.
+        dim: Spatial dimension to check.
     """
     if dim not in config.boundary_ancilla_indexes:
         return
@@ -339,19 +356,21 @@ def _is_out_boundary_single_layer(
     dim: int,
 ) -> None:
     """
-    Single-layer ghost-cell check.
+    Flag states in either ghost cell of a single-layer boundary.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
-        dim (int): The dimension index.
+        config: LBM configuration containing the encoded boundary locations.
+        position_register: Position registers to inspect.
+        boundary_ancillas: Ancillas used for boundary detection.
+        dim: Spatial dimension to check.
     """
     anc = boundary_ancillas[config.boundary_ancilla_indexes[dim]]
 
+    # Lower ghost cell.
     with position_register[dim] == (config.boundary_offsets[dim] - 1):
         anc.flip()
 
+    # Upper ghost cell.
     with position_register[dim] == int(
         config.grid_size[dim] + config.boundary_offsets[dim]
     ):
@@ -366,13 +385,16 @@ def _is_out_boundary_multi_layer(
     dim: int,
 ) -> None:
     """
-    Multi-layer ghost-cell check.
+    Flag states in the ghost region of a multi-layer boundary.
+
+    The ancilla is flipped when the encoded position lies below the physical
+    domain or at or above its upper bound.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
-        dim (int): The dimension index.
+        config: LBM configuration containing the encoded boundary locations.
+        position_register: Position registers to inspect.
+        boundary_ancillas: Ancillas used for boundary detection.
+        dim: Spatial dimension to check.
     """
     anc = boundary_ancillas[config.boundary_ancilla_indexes[dim]]
 
@@ -395,27 +417,28 @@ def _comes_from_boundary(
     dim: int,
 ) -> None:
     """
-    Flip the boundary ancilla if the particle is currently located in the
-    near-boundary region and its velocity points away from the boundary.
+    Update the boundary ancilla after applying a boundary correction.
 
-    This mirrors your original post-correction ancilla logic.
+    The ancilla is flipped for states in the near-boundary region whose
+    velocity points away from the corresponding boundary. This restores
+    the ancilla state after the reflected position and velocity have been updated.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
-        dim (int): The dimension index.
+        config: LBM configuration containing the encoded boundary locations.
+        position_register: Corrected position registers.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the corrected velocity direction.
+        boundary_ancillas: Ancillas used for boundary detection.
+        dim: Spatial dimension being corrected.
     """
     anc = boundary_ancillas[config.boundary_ancilla_indexes[dim]]
 
-    # Lower boundary and moving away from it
+    # State is near the lower boundary and moving away from it.
     with position_register[dim] <= velocity_register[dim]:
         with sign_register[dim]:
             anc.flip()
 
-    # Upper boundary and moving away from it
+    # State is near the upper boundary and moving away from it.
     upper_bound = int(config.grid_size[dim] + config.boundary_offsets[dim])
 
     for i in range(1, config.boundary_offsets[dim] + 1):

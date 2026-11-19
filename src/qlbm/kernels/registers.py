@@ -16,19 +16,22 @@ def allocate_registers(
     list[QuantumBool],
 ]:
     """
-    Allocate fresh quantum registers for the LBM simulation.
+    Allocate the quantum registers required by an LBM simulation.
+
+    Position, sign, velocity, and boundary-ancilla registers are allocated
+    according to the simulation configuration. Oracle ancillas are allocated
+    only when requested.
+
+    Args:
+        config: Simulation configuration defining the register sizes.
+        create_oracle_ancillas: Whether to allocate ancillas used by region oracles.
 
     Returns:
-        (
-            position_register,
-            sign_register,
-            velocity_register,
-            boundary_ancillas,
-            oracle_ancillas,
-        )
+        Position registers, sign registers, velocity registers,
+        boundary ancillas, and oracle ancillas, in that order.
     """
 
-    # ======== POSITION REGISTER ========
+    # ======== POSITION REGISTERS ========
 
     position_register = [
         QuantumModulus(int(size)) for size in config.positions_register_shape

@@ -11,16 +11,20 @@ def measure_density(
     backend: object | None = None,
 ) -> dict[tuple[int, ...], float]:
     """
-    Measure position density and convert it back to physical coordinates
-    (ghost cells removed).
+    Measure the spatial density distribution in physical grid coordinates.
+
+    The measured encoded coordinates are converted back to physical coordinates.
+    States outside the physical domain, such as additional boundary layers, are
+    excluded from the result.
 
     Args:
-        shots (int | None, optional): Number of shots to run. Defaults to None.
-        backend (object | None, optional): Backend to run the simulation on. Defaults to None.
-        position_register (list[QuantumModulus]): Position register to measure.
+        config: Simulation configuration defining the coordinate encoding.
+        position_register: Position registers to measure.
+        shots: Number of measurement shots.
+        backend: Backend used for measurement.
 
     Returns:
-        dict[tuple[int, ...], float]: Dictionary of physical coordinates and their corresponding density.
+        Mapping from physical grid coordinates to their measured probabilities.
     """
 
     raw_data = multi_measurement(
@@ -55,7 +59,17 @@ def full_measurement(
     backend: object | None = None,
 ) -> MultiMeasurementResult:
     """
-    Measure positions + signs + velocity registers together.
+    Jointly measure the position, sign, and velocity registers.
+
+    Args:
+        position_register: Position registers to measure.
+        sign_register: Velocity-sign registers to measure.
+        velocity_register: Velocity-magnitude registers to measure.
+        shots: Number of measurement shots.
+        backend: Backend used for measurement.
+
+    Returns:
+        Joint measurement result for all supplied quantum registers.
     """
 
     return multi_measurement(

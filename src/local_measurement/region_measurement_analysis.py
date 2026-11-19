@@ -1,17 +1,12 @@
 """
-Problem-independent region measurement utilities.
+Analysis utilities for region-probability estimation.
 
-This module is intentionally independent of any specific application
-(e.g. QLBM). The user provides:
+This module mirrors the region-estimation methods defined in
+`region_measurement`, but additionally returns the quantum sessions and
+measurement-shot counts generated during each estimation.
 
-1. A register factory (`qargs`)
-2. A state preparation / simulation function (`state_function`)
-3. Either:
-    - a flag oracle
-    - a phase oracle
-
-A region measurement method can then be selected through
-`RegionMeasurementMethod`.
+These additional results can be used to analyze circuit resources such as
+qubit count, circuit depth, gate count, and measurement cost.
 """
 
 from __future__ import annotations
@@ -51,29 +46,32 @@ def estimate_region_probability_analysis(
     int | None | Sequence[int | None],
 ]:
     """
-    Estimate the probability mass contained in the selected region.
+    Estimate a region probability and return circuit-analysis information.
 
-    Dispatches the estimation task to the selected backend.
-
-    Defaults to `RegionMeasurementMethod.IQAE` if `estimation_method` is None and method is not specified in `options`.
+    The estimation method is selected explicitly through `estimation_method`,
+    through `options.method`, or defaults to IQAE. In addition to the region
+    estimate, the function returns the quantum session or sessions generated
+    during the estimation and their corresponding measurement-shot counts.
 
     Args:
         problem:
-            Region estimation problem definition containing the
-            state preparation and oracle descriptions.
+            Region-estimation problem containing the state preparation and
+            method-specific region information.
 
         options:
-            Runtime configuration of the estimation algorithm.
-            If None, default options are used.
+            Runtime configuration for the estimation. Default options are used
+            when omitted.
 
         estimation_method:
-            Override the estimation method to use.
-            If None, the method is determined from `options`.
+            Optional method overriding the method specified in `options`.
 
     Returns:
-        RegionEstimate:
-            Estimated region probability together with optional
-            confidence bounds.
+        Region estimate, generated quantum session or sessions, and corresponding
+        measurement-shot count or counts.
+
+    Raises:
+        ValueError:
+            If the selected estimation method is unsupported.
     """
 
     options = options or EstimationOptions()
@@ -103,7 +101,7 @@ def estimate_region_probability_analysis(
             problem, shots=options.shots, backend=options.backend
         )
 
-    raise ValueError(f"Unsupported region measurement method: {options.method}")
+    raise ValueError(f"Unsupported region measurement method: {method}")
 
 
 def classical_sampling_region_estimate(
@@ -116,6 +114,32 @@ def classical_sampling_region_estimate(
     QuantumSession | Sequence[QuantumSession],
     int | None | Sequence[int | None],
 ]:
+    """
+    Estimate the region probability by classical sampling.
+
+    The state is prepared and measured, and each sample is classified according
+    to whether it belongs to the selected region. The quantum session used for
+    the measurement and the configured shot count are returned for analysis.
+
+    Args:
+        problem:
+            Estimation problem providing the state preparation, sampling
+            measurement, and classical classifier.
+
+        shots:
+            Number of measurement shots.
+
+        backend:
+            Backend used for measurement.
+
+    Returns:
+        Region estimate, quantum session used for sampling, and shot count.
+
+    Raises:
+        ValueError:
+            If the problem does not provide a classical classifier or
+            sampling measurement.
+    """
     if problem.classical_classifier is None:
         raise ValueError("CLASSICAL_SAMPLING requires classical_classifier.")
     if problem.sampling_measurement is None:
@@ -174,24 +198,25 @@ def obpa_region_estimate(
     int | None | Sequence[int | None],
 ]:
     """
-    Estimate the region probability through direct flag measurement.
+    Estimate the region probability by directly measuring a flag qubit.
 
-    The state is prepared once, the flag oracle is applied,
-    and the target qubit is measured.
+    The state is prepared, the region flag oracle is applied, and the target
+    qubit is measured. The resulting session and measurement-shot count are
+    returned together with the probability estimate for circuit analysis.
 
     Args:
         problem:
-            Region estimation problem definition.
+            Region-estimation problem providing a flag oracle.
 
         shots:
             Number of measurement shots.
 
         backend:
-            Backend used for circuit execution.
+            Backend used for measurement.
 
     Returns:
-        RegionEstimate:
-            Direct sampling estimate of the region probability.
+        Region estimate, quantum session used for the flag measurement,
+        and shot count.
 
     Raises:
         ValueError:
@@ -249,35 +274,29 @@ def iqae_region_estimate(
     int | None | Sequence[int | None],
 ]:
     """
-    Estimate the region probability using Iterative Quantum
-    Amplitude Estimation (IQAE).
+    Estimate the region probability using Iterative Quantum Amplitude Estimation.
+
+    The flag oracle is incorporated into the state-preparation function expected
+    by the IQAE analysis implementation. All quantum sessions and corresponding
+    shot counts generated during the iterative procedure are returned for
+    resource analysis.
 
     Args:
         problem:
-            Region estimation problem definition.
+            Region-estimation problem providing the state preparation and
+            flag oracle.
 
         options:
-            IQAE runtime configuration.
-
-            eps:
-                Requested estimation accuracy.
-
-            alpha:
-                Failure probability.
-
-            shots:
-                Measurement shot count.
-
-            backend:
-                Backend used for measurements.
+            IQAE runtime configuration containing the requested accuracy,
+            failure probability, and measurement settings.
 
     Returns:
-        RegionEstimate:
-            Estimated region probability and confidence bounds.
+        Region estimate, quantum sessions generated by IQAE, and the
+        corresponding measurement-shot counts.
 
     Raises:
         ValueError:
-            If no flag oracle is available.
+            If no flag oracle is provided.
     """
 
     if problem.flag_oracle is None:
@@ -288,6 +307,7 @@ def iqae_region_estimate(
     mes_kwargs = _measurement_kwargs(options)
 
     def state_with_flag(*args: Any) -> None:
+        """Prepare the state and flag states belonging to the target region."""
         problem.state_function(*args)
         problem.nonnone_flag_oracle(*args)
 
@@ -328,34 +348,28 @@ def qae_region_estimate(
     int | None | Sequence[int | None],
 ]:
     """
-    Estimate the region probability using canonical Quantum
-    Amplitude Estimation (QAE).
+    Estimate the region probability using canonical Quantum Amplitude Estimation.
+
+    A supplied phase oracle is used directly. If only a flag oracle is available,
+    it is converted into a phase oracle using a Z gate on the target qubit.
+
+    The quantum session and configured measurement-shot count are returned
+    together with the estimate for circuit analysis.
 
     Args:
         problem:
-            Region estimation problem definition.
+            Region-estimation problem providing a phase or flag oracle.
 
         options:
-            QAE runtime configuration.
-
-            precision:
-                Estimation precision.
-
-            qae_target:
-                Optional target register containing the
-                QAE estimate.
+            Runtime configuration containing the QAE precision, optional target
+            register, and measurement settings.
 
     Returns:
-        RegionEstimate:
-            Estimated region probability.
+        Region estimate, quantum session used by QAE, and measurement-shot count.
 
     Raises:
         ValueError:
-            If neither a phase oracle nor a flag oracle
-            is available.
-
-        ValueError:
-            If neither precision nor qae_target are supplied.
+            If neither a phase oracle nor a flag oracle is provided.
     """
 
     from qrisp import QAE, z
@@ -367,6 +381,7 @@ def qae_region_estimate(
     elif problem.flag_oracle is not None:
 
         def oracle_function(*oracle_args: Any) -> None:
+            """Convert the flag oracle into a pha*e oracle using the target qubit."""
             target = oracle_args[-1]
 
             problem.nonnone_flag_oracle(*oracle_args)
@@ -409,16 +424,16 @@ def _probability_from_counts(
     counts: MeasurementDict,
 ) -> float:
     """
-    Convert flag measurement results into a probability.
+    Extract the marked-state probability from flag measurement results.
+
+    Truth-like outcomes representing the marked state are accumulated into
+    the returned probability.
 
     Args:
-        counts:
-            Measurement dictionary mapping outcomes
-            to probabilities or frequencies.
+        counts: Mapping from measurement outcomes to probability weights.
 
     Returns:
-        float:
-            Probability of obtaining the marked state.
+        Total probability of the marked state.
     """
 
     truth_values = {
@@ -444,32 +459,26 @@ def _qae_angle_to_probability(
     backend: object | None = None,
 ) -> float:
     """
-    Convert a QAE angle estimate into a probability.
+    Convert a QAE phase estimate into a probability.
 
-    QAE estimates an angle theta satisfying
+    QAE encodes the desired probability as
 
-        a = sin²(pi * theta)
+        a = sin²(pi * theta),
 
-    where a is the desired probability.
+    where `theta` is the estimated phase. If `angle` is a quantum object,
+    its measurement distribution is converted into the corresponding
+    weighted probability.
 
     Args:
-        angle:
-            Result returned by QAE.
-
-        shots:
-            Number of measurement shots used when
-            measuring a quantum output object.
-
-        backend:
-            Backend used for measurement.
+        angle: Classical or quantum phase estimate returned by QAE.
+        shots: Number of shots used when measuring a quantum result.
+        backend: Backend used for measurement.
 
     Returns:
-        float:
-            Estimated probability.
+        Estimated probability.
 
     Raises:
-        TypeError:
-            If the supplied QAE result cannot be converted.
+        TypeError: If the QAE result cannot be converted to a probability.
     """
 
     if isinstance(angle, (float, int)):
@@ -495,17 +504,17 @@ def _measurement_kwargs(
     options: EstimationOptions,
 ) -> dict[str, Any]:
     """
-    Create measurement keyword arguments for Qrisp primitives.
+    Construct measurement keyword arguments passed to Qrisp.
+
+    A copy of `mes_kwargs` is extended with the configured `backend` and `shots`.
+    Explicit `backend` and `shots` values override corresponding entries already
+    present in `mes_kwargs`.
 
     Args:
-        options:
-            Estimation options containing measurement
-            configuration.
+        options: Estimation options containing the measurement configuration.
 
     Returns:
-        dict[str, Any]:
-            Dictionary of keyword arguments passed
-            to Qrisp measurement routines.
+        Keyword arguments for Qrisp measurement routines.
     """
 
     kwargs = dict(options.mes_kwargs)

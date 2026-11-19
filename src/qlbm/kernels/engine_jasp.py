@@ -17,16 +17,17 @@ def simulation_step(
     boundary_ancillas: list[QuantumBool],
 ) -> None:
     """
-    Perform one full simulation step:
-    1. streaming
-    2. boundary-condition correction
+    Perform one complete LBM simulation step.
+
+    The position registers are first updated by the streaming operation,
+    after which the configured boundary conditions are applied.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
+        config: LBM configuration defining the simulation setup.
+        position_register: Position registers to update.
+        velocity_register: Velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary handling.
     """
     streaming_step(
         config,
@@ -53,15 +54,18 @@ def run_simulation(
     iterations: int = 1,
 ) -> None:
     """
-    Run the simulation on already-allocated and already-initialized registers.
+    Advance an initialized LBM state for a specified number of iterations.
+
+    The supplied registers are assumed to be already allocated and initialized.
+    Each iteration consists of streaming followed by boundary-condition handling.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        boundary_ancillas (list[QuantumBool]): The boundary ancillas.
-        iterations (int): The number of iterations to run.
+        config: LBM configuration defining the simulation setup.
+        position_register: Initialized position registers.
+        velocity_register: Initialized velocity-magnitude registers.
+        sign_register: Qubits encoding the velocity direction.
+        boundary_ancillas: Ancillas used for boundary handling.
+        iterations: Number of simulation steps to perform.
     """
     for _ in range(iterations):
         simulation_step(
@@ -85,21 +89,18 @@ def initialize_and_run(
     list[QuantumBool],
 ]:
     """
-    Allocate registers, initialize the quantum state, and run the simulation.
+    Allocate registers, prepare the initial state, and run the simulation.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        iterations (int): The number of iterations to run.
-        create_oracle_ancillas (bool): Whether to create oracle ancillas.
+        config: LBM configuration containing the simulation setup and
+            initial conditions.
+        iterations: Number of simulation steps to perform.
+        create_oracle_ancillas: Whether to allocate ancillas used by
+            region oracles.
 
     Returns:
-        (
-            position_register,
-            sign_register,
-            velocity_register,
-            boundary_ancillas,
-            oracle_ancillas,
-        )
+        Position registers, sign registers, velocity registers,
+        boundary ancillas, and oracle ancillas, in that order.
     """
     (
         position_register,
@@ -148,20 +149,17 @@ def initialize_only(
     list[QuantumBool],
 ]:
     """
-    Allocate registers and initialize the state, but do not run any time steps.
+    Allocate registers and prepare the initial state without advancing the simulation.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        create_oracle_ancillas (bool): Whether to create oracle ancillas.
+        config: LBM configuration containing the simulation setup and
+            initial conditions.
+        create_oracle_ancillas: Whether to allocate ancillas used by
+            region oracles.
 
     Returns:
-        (
-            position_register,
-            sign_register,
-            velocity_register,
-            boundary_ancillas,
-            oracle_ancillas,
-        )
+        Position registers, sign registers, velocity registers,
+        boundary ancillas, and oracle ancillas, in that order.
     """
     (
         position_register,

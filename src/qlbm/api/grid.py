@@ -31,13 +31,13 @@ from qlbm.region_oracle.oracle import get_phase_oracle, get_region_oracle
 
 class LBMGrid:
     """
-    User-facing API for the quantum LBM solver.
+    User-facing interface for configuring and running quantum LBM simulations.
 
-    This class stores:
-    - static simulation configuration (`LBMConfig`)
-    - the currently active quantum registers (after initialization/run)
+    The grid stores the simulation configuration and manages the quantum
+    registers used during initialization, simulation, measurement, and
+    region-based analysis.
 
-    The actual quantum evolution logic lives in `local_qlbm.kernels.*`.
+    The underlying quantum operations are implemented in `qlbm.kernels`.
     """
 
     def __init__(
@@ -47,6 +47,15 @@ class LBMGrid:
         boundary_conditions: list[BoundaryCondition],
         name: str | None = None,
     ) -> None:
+        """
+        Create a quantum LBM grid.
+
+        Args:
+            grid_size: Number of lattice cells along each spatial dimension.
+            velocity_set: Discrete velocity set used by the simulation.
+            boundary_conditions: Boundary conditions applied to the domain.
+            name: Optional name of the simulation.
+        """
         self._config = LBMConfig(
             _grid_size_input=np.asarray(grid_size, dtype=int),
             velocity_set=velocity_set,
@@ -69,6 +78,13 @@ class LBMGrid:
         bubble_roi: RegionOfInterest,
         velocity: ArrayLike,
     ) -> None:
+        """
+        Set the initial region and velocity of the simulation.
+
+        Args:
+            bubble_roi: Region of interest defining the initially occupied region.
+            velocity: Initial velocity associated with the region.
+        """
         self._config.set_initial_state(
             bubble=bubble_roi,
             velocity=np.asarray(velocity, dtype=int),
@@ -79,6 +95,7 @@ class LBMGrid:
     # ======================================================
 
     def _require_initialized(self) -> None:
+        """Raise an error if the simulation registers have not been initialized."""
         if (
             self._position_register is None
             or self._sign_register is None
@@ -99,6 +116,7 @@ class LBMGrid:
         boundary_ancillas: list[QuantumBool],
         oracle_ancillas: list[QuantumBool],
     ) -> None:
+        """Store the quantum registers associated with the current simulation state."""
         self._position_register = position_register
         self._sign_register = sign_register
         self._velocity_register = velocity_register
@@ -111,8 +129,11 @@ class LBMGrid:
 
     def initialize(self, create_oracle_ancillas: bool = False) -> None:
         """
-        Allocate registers and prepare the initial state, but do not
-        advance the simulation in time.
+        Initialize the quantum registers and prepare the simulation state.
+
+        Args:
+            create_oracle_ancillas: Whether to allocate ancilla qubits required
+                by region oracles.
         """
         (
             position_register,
@@ -135,10 +156,14 @@ class LBMGrid:
 
     def run_simulation(self, iterations: int = 1, init: bool = True) -> None:
         """
-        Run the simulation for a given number of iterations.
+        Run the simulation for a specified number of iterations.
 
-        If `init=True`, registers are freshly allocated and initialized.
-        If `init=False`, the simulation continues from the current state.
+        A new state is initialized when `init` is True or when no current
+        simulation state exists. Otherwise, the existing state is advanced.
+
+        Args:
+            iterations: Number of simulation steps to perform.
+            init: Whether to force initialization of a new simulation state.
         """
         if init or self._position_register is None:
             (
@@ -174,10 +199,7 @@ class LBMGrid:
         )
 
     def step(self) -> None:
-        """
-        Perform one full simulation step:
-        streaming + boundary conditions.
-        """
+        """Perform one complete simulation step: streaming and boundary conditions."""
         self._require_initialized()
 
         simulation_step(
@@ -189,9 +211,7 @@ class LBMGrid:
         )
 
     def stream(self) -> None:
-        """
-        Perform one streaming step only.
-        """
+        """Perform one streaming step without applying boundary conditions."""
         self._require_initialized()
 
         streaming_step(
@@ -202,9 +222,7 @@ class LBMGrid:
         )
 
     def apply_boundary_conditions(self) -> None:
-        """
-        Apply boundary conditions only.
-        """
+        """Apply the configured boundary conditions to the current state."""
         self._require_initialized()
 
         apply_boundary_conditions(
@@ -225,16 +243,19 @@ class LBMGrid:
         backend: object | None = None,
     ) -> dict[tuple[int, ...], float]:
         """
-        Measure position density and convert it back to physical coordinates
-        (ghost cells removed).
+        Measure the spatial density distribution in physical grid coordinates.
+
+        Ghost-cell coordinates used internally by the quantum representation
+        are removed from the returned result.
 
         Args:
-            shots (int | None, optional): Number of shots to run. Defaults to None.
-            backend (object | None, optional): Backend to run the simulation on. Defaults to None.
+            shots: Number of measurement shots. If None, use the backend default.
+            backend: Backend used to execute the measurement.
 
         Returns:
-            dict[tuple[int, ...], float]: Dictionary of physical coordinates and their corresponding density.
+            Mapping from physical grid coordinates to measured density.
         """
+
         self._require_initialized()
 
         if self._position_register is None:
@@ -253,7 +274,14 @@ class LBMGrid:
         backend: object | None = None,
     ) -> MultiMeasurementResult:
         """
-        Measure positions + signs + velocity registers together.
+        Jointly measure the position, sign, and velocity registers.
+
+        Args:
+            shots: Number of measurement shots. If None, use the backend default.
+            backend: Backend used to execute the measurement.
+
+        Returns:
+            Joint measurement result for the position, sign, and velocity registers.
         """
         self._require_initialized()
 
@@ -279,6 +307,21 @@ class LBMGrid:
         self,
         simulation_iterations: int = 1,
     ) -> Callable[..., None]:
+        """
+        Create a callable that prepares and evolves a simulation state.
+
+        The returned callable expects flattened position, sign, velocity,
+        and boundary-ancilla registers in this order.
+
+        Args:
+            simulation_iterations: Number of simulation iterations performed
+                by the returned callable.
+
+        Returns:
+            Callable that initializes the supplied registers and advances
+            the simulation.
+        """
+
         def wrapper(*flat_args):
             d = self.dimensions
 
@@ -304,6 +347,20 @@ class LBMGrid:
         self,
         create_oracle_ancillas: bool = True,
     ) -> Callable[[], tuple[Any, ...]]:
+        """
+        Create a factory that allocates the quantum arguments for the simulation.
+
+        The returned factory allocates position, sign, velocity, boundary-ancilla,
+        and optionally oracle-ancilla registers, followed by a target qubit.
+
+        Args:
+            create_oracle_ancillas: Whether to allocate ancillas required by
+                region oracles.
+
+        Returns:
+            Callable that allocates and returns the flattened quantum arguments.
+        """
+
         def factory():
             from qlbm.kernels.registers import allocate_registers
 
@@ -329,6 +386,15 @@ class LBMGrid:
         self,
         roi: RegionOfInterest,
     ) -> Callable[..., None]:
+        """
+        Create a bit-flip oracle that flags positions inside a region of interest.
+
+        Args:
+            roi: Region of interest to encode in the oracle.
+
+        Returns:
+            Callable implementing the region-membership oracle.
+        """
         encoded_roi = self.config.encode_roi(roi)
 
         def oracle(*flat_args):
@@ -352,6 +418,15 @@ class LBMGrid:
         self,
         roi: RegionOfInterest,
     ) -> Callable[..., None]:
+        """
+        Create a phase oracle for positions inside a region of interest.
+
+        Args:
+            roi: Region of interest to encode in the oracle.
+
+        Returns:
+            Callable implementing the region phase oracle.
+        """
 
         encoded_roi = self.config.encode_roi(roi)
 
@@ -377,6 +452,16 @@ class LBMGrid:
         self,
         roi: RegionOfInterest,
     ) -> Callable[..., bool]:
+        """
+        Create a classical classifier for membership in a region of interest.
+
+        Args:
+            roi: Region against which points are tested.
+
+        Returns:
+            Callable returning whether a point lies inside the region.
+        """
+
         def wrapper(point) -> bool:
             return roi.contains(point)
 
@@ -387,6 +472,18 @@ class LBMGrid:
         roi: RegionOfInterest,
         simulation_iterations: int = 1,
     ) -> RegionEstimationInput:
+        """
+        Construct a region-estimation problem for the given region of interest.
+
+        Args:
+            roi: Region whose probability or density is to be estimated.
+            simulation_iterations: Number of simulation iterations included
+                in the state preparation.
+
+        Returns:
+            Region-estimation input containing the quantum arguments, state
+            preparation function, and region oracle.
+        """
 
         return RegionEstimationInput(
             qargs=self.qargs_factory(),
@@ -398,9 +495,15 @@ class LBMGrid:
 
     def sampling_measurement_function(
         self,
-        shots: int | None = None,
-        backend: object | None = None,
     ) -> Callable[..., dict[tuple[int, ...], float]]:
+        """
+        Create a callable for measuring density from supplied quantum registers.
+
+        Returns:
+            Callable that measures the position registers and returns the
+            corresponding physical density distribution.
+        """
+
         def wrapper(
             *flat_args, shots: int | None = None, backend: object | None = None
         ) -> dict[tuple[int, ...], float]:
@@ -418,7 +521,13 @@ class LBMGrid:
         physical_density: dict[tuple[int, ...], float],
     ) -> np.ndarray:
         """
-        Convert sparse physical density dictionary to dense NumPy array.
+        Convert a sparse physical-density mapping to a dense NumPy array.
+
+        Args:
+            physical_density: Mapping from physical grid coordinates to density values.
+
+        Returns:
+            Dense array with shape equal to the physical grid size.
         """
         grid = np.zeros(tuple(self._config.grid_size.tolist()), dtype=float)
 
@@ -432,7 +541,16 @@ class LBMGrid:
         analysis_results: dict,
     ) -> np.ndarray:
         """
-        Convert analysis result dict with key 'cells' to dense NumPy array.
+        Convert analysis results containing cell values to a dense NumPy array.
+
+        The input dictionary is expected to contain a `cells` mapping from
+        grid coordinates to values.
+
+        Args:
+            analysis_results: Analysis result dictionary containing a `cells` mapping.
+
+        Returns:
+            Dense array with shape equal to the physical grid size.
         """
         grid = np.zeros(tuple(self._config.grid_size.tolist()), dtype=float)
 
@@ -454,18 +572,19 @@ class LBMGrid:
         colorbar_only: bool = False,
     ) -> None:
         """
-        Plot the results as a heatmap using matplotlib.
+        Plot simulation results as a heatmap.
 
         Args:
-            numpy_results (np.ndarray): The numpy array of results to plot.
-            vmin (float, optional): The lower bound of the color scale.
-            vmax (float, optional): The upper bound of the color scale.
-            figsize (tuple): Width and height of the figure in inches.
-            colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
-            save_path (str, optional): File path to save the image (e.g., 'plot.png').
-            fontsize (int): Fontsize for ticks and legend.
-            colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
+            numpy_results: Array of values to plot.
+            vmin: Lower bound of the color scale.
+            vmax: Upper bound of the color scale.
+            figsize: Figure size in inches.
+            colorbar_orientation: Orientation of the colorbar, or None/False to omit it.
+            save_path: Optional path to save the figure.
+            fontsize: Font size used for ticks and labels.
+            colorbar_only: Whether to render only the colorbar.
         """
+
         plot_res(
             numpy_results,
             vmin=vmin,
@@ -490,18 +609,18 @@ class LBMGrid:
         roi: RegionOfInterest | None = None,
     ) -> None:
         """
-        Plot the results as a heatmap using matplotlib.
+        Plot simulation results as a heatmap with an optional region of interest.
 
         Args:
-            numpy_results (np.ndarray): The numpy array of results to plot.
-            vmin (float, optional): The lower bound of the color scale.
-            vmax (float, optional): The upper bound of the color scale.
-            figsize (tuple): Width and height of the figure in inches.
-            colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
-            save_path (str, optional): File path to save the image (e.g., 'plot.png').
-            fontsize (int): Fontsize for ticks and legend.
-            colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
-            roi (RegionOfInterest, optional): Region of interest to highlight.
+            numpy_results: Array of values to plot.
+            vmin: Lower bound of the color scale.
+            vmax: Upper bound of the color scale.
+            figsize: Figure size in inches.
+            colorbar_orientation: Orientation of the colorbar, or None/False to omit it.
+            save_path: Optional path to save the figure.
+            fontsize: Font size used for ticks and labels.
+            colorbar_only: Whether to render only the colorbar.
+            roi: Optional region of interest to highlight.
         """
         plot_res_roi(
             numpy_results,
@@ -523,10 +642,20 @@ class LBMGrid:
         time_steps_per_frame: int = 1,
     ) -> None:
         """
-        Run the simulation and export density snapshots as VTK files.
+        Run the simulation while periodically exporting density snapshots as VTK files.
 
-        It works just as a visualization tool, and does not reflect the actual simulation workflow, because
-        it does the measurement after each time step, not at the end of the simulation.
+        This method is intended for visualization rather than the standard simulation
+        workflow. The quantum state is measured after every `time_steps_per_frame`
+        simulation steps, and each measured density field is exported as a VTK file.
+
+        Existing VTK files matching the output filename prefix are removed before
+        the simulation starts.
+
+        Args:
+            filename: Base path used for the generated VTK files.
+            iterations: Number of density snapshots to generate after the initial state.
+            init: Whether to initialize the simulation before generating snapshots.
+            time_steps_per_frame: Number of simulation steps between consecutive snapshots.
         """
         full_path = Path(filename)
         target_dir = full_path.parent
@@ -560,59 +689,72 @@ class LBMGrid:
 
     @property
     def name(self) -> str | None:
+        """Return the optional name of the simulation."""
         return self._config.name
 
     @property
     def grid_size(self) -> np.ndarray:
+        """Return the physical grid size."""
         return self._config.grid_size
 
     @property
     def velocity_set(self) -> VelocitySet:
+        """Return the discrete velocity set used by the simulation."""
         return self._config.velocity_set
 
     @property
     def dimensions(self) -> int:
+        """Return the number of spatial dimensions."""
         return self._config.dimensions
 
     @property
     def velocity_qubits_per_dim(self) -> int:
+        """Return the number of velocity qubits used per spatial dimension."""
         return self._config.velocity_qubits_per_dim
 
     @property
     def positions_register_shape(self) -> tuple[int, ...]:
+        """Return the shape of the position quantum registers."""
         return self._config.positions_register_shape
 
     @property
     def total_size(self) -> int:
+        """Return the total number of qubits required by the simulation."""
         return self._config.total_size
 
     @property
     def position_register(self) -> list[QuantumModulus]:
+        """Return the initialized position registers."""
         assert self._position_register is not None, "Registers not initialized"
         return self._position_register
 
     @property
     def velocity_register(self) -> list[QuantumFloat]:
+        """Return the initialized velocity registers."""
         assert self._velocity_register is not None, "Registers not initialized"
         return self._velocity_register
 
     @property
     def sign_register(self) -> list[QuantumBool]:
+        """Return the initialized sign registers."""
         assert self._sign_register is not None, "Registers not initialized"
         return self._sign_register
 
     @property
     def boundary_ancillas(self) -> list[QuantumBool]:
+        """Return the ancilla qubits used for boundary handling."""
         assert self._boundary_ancillas is not None, "Registers not initialized"
         return self._boundary_ancillas
 
     @property
     def oracle_ancillas(self) -> list[QuantumBool]:
+        """Return the ancilla qubits used by region oracles."""
         assert self._oracle_ancillas is not None, "Registers not initialized"
         return self._oracle_ancillas
 
     @property
     def config(self) -> LBMConfig:
+        """Return the underlying simulation configuration."""
         return self._config
 
     # ======================================================
@@ -620,6 +762,7 @@ class LBMGrid:
     # ======================================================
 
     def __repr__(self) -> str:
+        """Return a concise developer-oriented representation of the grid."""
         return (
             f"LBMGrid(grid_size={self._config.grid_size.tolist()}, "
             f"velocity_set={self._config.velocity_set!r}, "
@@ -627,6 +770,7 @@ class LBMGrid:
         )
 
     def __str__(self) -> str:
+        """Return a human-readable summary of the grid configuration."""
         return (
             f"--- Quantum LBM Grid: {self._config.name or 'Unnamed'} ---\n"
             f"Dimensions : {self._config.dimensions}D\n"

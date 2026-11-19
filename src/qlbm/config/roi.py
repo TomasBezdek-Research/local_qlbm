@@ -3,24 +3,30 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class RegionOfInterest:
+    """
+    Region of interest defined either by rectangular bounds or by discrete points.
+
+    Exactly one representation must be provided.
+    """
+
     _bounds: list[tuple[int, int]] | None = None
     _points_set: set[tuple[int, ...]] | None = None
 
     def __post_init__(self):
-        """Validation logic runs after initialization."""
+        """Validate that exactly one ROI representation is specified."""
         if (self._bounds is not None) == (self._points_set is not None):
-            raise ValueError(
-                "Exactly one of 'bounds' or 'points_list' must be specified."
-            )
+            raise ValueError("Exactly one of bounds or points must be specified.")
 
     @property
     def bounds(self) -> list[tuple[int, int]]:
+        """Return the bounds defining the rectangular subgrid."""
         if self._bounds is None:
             raise AttributeError("This ROI is a point cloud, not a subgrid.")
         return self._bounds
 
     @property
     def points_set(self) -> set[tuple[int, ...]]:
+        """Return the discrete points defining the point-cloud ROI."""
         if self._points_set is None:
             raise AttributeError("This ROI is a subgrid, not a point cloud.")
         return self._points_set
@@ -28,52 +34,55 @@ class RegionOfInterest:
     @classmethod
     def from_bounds(cls, bounds: list[tuple[int, int]]):
         """
-        Creates a RegionOfInterest from a list of tuples representing the bounds.
+        Create a region of interest from rectangular bounds.
+
+        Each `(lower, upper)` pair defines the interval along one dimension,
+        with the lower bound inclusive and the upper bound exclusive.
 
         Args:
-            bounds (list): A list of tuples representing the bounds. Example: [(2, 5), (1, 3)].
-            Lower bound is inclusive, Upper bound is exclusive.
+            bounds: Bounds for each spatial dimension.
 
         Returns:
-            RegionOfInterest: A RegionOfInterest object.
+            Region of interest defined by the given bounds.
         """
         return cls(_bounds=bounds)
 
     @classmethod
     def from_points(cls, points: set[tuple[int, ...]]):
         """
-        Creates a RegionOfInterest from a list of lists representing the points.
+        Create a region of interest from a set of discrete points.
 
         Args:
-            points (list): A list of lists representing the points. Example: [[2, 3], [5, 7]]
+            points: Coordinates belonging to the region, for example
+                `{(2, 3), (5, 7)}`.
 
         Returns:
-            RegionOfInterest: A RegionOfInterest object.
+            Region of interest defined by the given points.
         """
         return cls(_points_set=points)
 
     @property
     def is_subgrid(self) -> bool:
+        """Return whether the region is defined by rectangular bounds."""
         return self._bounds is not None
 
     @property
     def is_point_cloud(self) -> bool:
+        """Return whether the region is defined by discrete points."""
         return self._points_set is not None
 
     def contains(self, coords: tuple[int, ...]) -> bool:
         """
-        Checks if the given user-space coordinates are inside this ROI.
+        Check whether the given coordinates belong to this region.
 
         Args:
-            coords (tuple): The user-space coordinates to check.
+            coords: Coordinates in user-space representation.
 
         Returns:
-            bool: True if the coordinates are inside the ROI, False otherwise.
+            True if the coordinates are inside the region, otherwise False.
         """
         if self.is_subgrid:
             # Check if coords are within the n-dimensional bounding box
             return all(low <= c < high for c, (low, high) in zip(coords, self.bounds))
         else:
-            # Check if the coordinate exists in the discrete point list
-            # We convert to list if points_list is a list of lists
             return coords in self.points_set

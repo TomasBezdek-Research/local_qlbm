@@ -14,13 +14,20 @@ def initialize_state(
     sign_register: list[QuantumBool],
 ) -> None:
     """
-    Initialize full quantum state (positions + velocity).
+    Prepare the initial position and velocity state.
+
+    The position registers are initialized from the configured region of interest,
+    while the velocity magnitude and direction are encoded in separate registers.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
+        config: LBM configuration containing the initial conditions.
+        position_register: Position registers to initialize.
+        velocity_register: Velocity-magnitude registers to initialize.
+        sign_register: Qubits encoding the velocity direction.
+
+    Raises:
+        ValueError: If the initial region or velocity has not been configured.
+        NotImplementedError: If point-cloud initialization is requested.
     """
 
     if config.initial_bubble is None:
@@ -57,12 +64,18 @@ def _initialize_subgrid(
     roi: RegionOfInterest,
 ) -> None:
     """
-    Prepare uniform superposition over ROI subgrid.
+    Prepare a uniform superposition over a rectangular region of interest.
+
+    Each position dimension is initialized independently to a uniform
+    superposition over its encoded interval.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        position_register (list[QuantumModulus]): The position register.
-        roi (RegionOfInterest): The region of interest.
+        config: LBM configuration defining the coordinate encoding.
+        position_register: Position registers to initialize.
+        roi: Subgrid region defining the initial position state.
+
+    Raises:
+        ValueError: If the initialization region is empty.
     """
 
     encoded_bounds = config.get_encoded_bounds(roi.bounds)
@@ -95,13 +108,16 @@ def _initialize_velocity(
     velocity: np.ndarray,
 ) -> None:
     """
-    Prepare velocity magnitude + sign registers.
+    Prepare the velocity-magnitude and direction registers.
+
+    For each spatial dimension, the absolute velocity is encoded in the
+    velocity register and its direction is encoded in the corresponding sign qubit.
 
     Args:
-        config (LBMConfig): The LBM configuration.
-        velocity_register (list[QuantumFloat]): The velocity register.
-        sign_register (list[QuantumBool]): The sign register.
-        velocity (np.ndarray): The velocity values.
+        config: LBM configuration defining the spatial dimensions.
+        velocity_register: Registers encoding the velocity magnitudes.
+        sign_register: Qubits encoding the velocity directions.
+        velocity: Initial velocity vector.
     """
 
     for d in range(config.dimensions):

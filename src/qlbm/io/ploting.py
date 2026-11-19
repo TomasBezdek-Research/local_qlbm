@@ -1,189 +1,249 @@
+from __future__ import annotations
+
+from os import PathLike
+
 import matplotlib as mpl
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from qlbm.config.roi import RegionOfInterest
 
 
-def plot_res(
-    numpy_results,
-    vmin=None,
-    vmax=None,
-    figsize=(8, 6),
-    colorbar_orientation="vertical",
-    save_path=None,
+def _plot_heatmap(
+    numpy_results: np.ndarray,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    figsize: tuple[float, float] = (8, 6),
+    colorbar_orientation: str | None = "vertical",
     fontsize: int = 15,
-    colorbar_only=False,
-):
-    """Plot the results as a heatmap using matplotlib.
+    colorbar_only: bool = False,
+) -> tuple[Figure, Axes]:
+    """
+    Create a heatmap or standalone colorbar.
 
     Args:
-        numpy_results (np.ndarray): The numpy array of results to plot.
-        vmin (float, optional): The lower bound of the color scale.
-        vmax (float, optional): The upper bound of the color scale.
-        figsize (tuple): Width and height of the figure in inches.
-        colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
-        save_path (str, optional): File path to save the image (e.g., 'plot.png').
-        fontsize (int): Fontsize for ticks and legend.
-        colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
+        numpy_results: Array containing the values to plot.
+        vmin: Lower bound of the color scale.
+        vmax: Upper bound of the color scale.
+        figsize: Figure size in inches.
+        colorbar_orientation: Colorbar orientation, or None to omit it.
+        fontsize: Font size used for tick labels.
+        colorbar_only: Whether to render only the colorbar.
+
+    Returns:
+        Figure and axes containing the generated plot.
     """
+    fig, ax = plt.subplots(figsize=figsize)
+
     if colorbar_only:
-        fig, ax = plt.subplots(figsize=figsize)
         norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        cmap = plt.get_cmap("coolwarm")
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        cbar = fig.colorbar(sm, cax=ax, orientation=colorbar_orientation)
+        sm = mpl.cm.ScalarMappable(
+            cmap="coolwarm",
+            norm=norm,
+        )
+
+        cbar = fig.colorbar(
+            sm,
+            cax=ax,
+            orientation=colorbar_orientation,
+        )
         cbar.ax.tick_params(labelsize=fontsize)
-    else:
-        data = numpy_results.T
 
-        # Create figure with the specified size
-        plt.figure(figsize=figsize)
+        return fig, ax
 
-        # Pass vmin and vmax to imshow to control the color scaling
-        im = plt.imshow(data, cmap="coolwarm", origin="lower", vmin=vmin, vmax=vmax)
+    # Transpose so dimension 0 maps to x and dimension 1 maps to y.
+    data = numpy_results.T
 
-        # Handle colorbar options
-        if colorbar_orientation == "vertical":
-            cbar = plt.colorbar(im, orientation="vertical")
-            cbar.ax.tick_params(labelsize=fontsize)
-        elif colorbar_orientation == "horizontal":
-            cbar = plt.colorbar(im, orientation="horizontal")
-            cbar.ax.tick_params(labelsize=fontsize)
+    image = ax.imshow(
+        data,
+        cmap="coolwarm",
+        origin="lower",
+        vmin=vmin,
+        vmax=vmax,
+    )
 
-        plt.xticks(
-            ticks=np.arange(data.shape[1]),
-            labels=np.arange(data.shape[1]),
-            fontsize=fontsize,
+    if colorbar_orientation in ("vertical", "horizontal"):
+        cbar = fig.colorbar(
+            image,
+            ax=ax,
+            orientation=colorbar_orientation,
         )
-        plt.yticks(
-            ticks=np.arange(data.shape[0]),
-            labels=np.arange(data.shape[0]),
-            fontsize=fontsize,
+        cbar.ax.tick_params(labelsize=fontsize)
+
+    ax.set_xticks(
+        np.arange(data.shape[1]),
+        labels=np.arange(data.shape[1]),
+        fontsize=fontsize,
+    )
+    ax.set_yticks(
+        np.arange(data.shape[0]),
+        labels=np.arange(data.shape[0]),
+        fontsize=fontsize,
+    )
+
+    # Draw cell boundaries at half-integer coordinates.
+    ax.set_xticks(
+        np.arange(0.5, data.shape[1] - 0.5, 1),
+        minor=True,
+    )
+    ax.set_yticks(
+        np.arange(0.5, data.shape[0] - 0.5, 1),
+        minor=True,
+    )
+    ax.grid(
+        which="minor",
+        color="white",
+        linestyle="-",
+        linewidth=1,
+    )
+    ax.tick_params(
+        which="minor",
+        bottom=False,
+        left=False,
+    )
+
+    return fig, ax
+
+
+def _highlight_roi(
+    ax: Axes,
+    roi: RegionOfInterest,
+) -> None:
+    """
+    Highlight a two-dimensional region of interest on a heatmap.
+
+    Args:
+        ax: Axes containing the heatmap.
+        roi: Region of interest to highlight.
+    """
+    if roi.is_subgrid:
+        if len(roi.bounds) != 2:
+            raise ValueError("ROI visualization requires a two-dimensional region.")
+
+        x_low, x_high = roi.bounds[0]
+        y_low, y_high = roi.bounds[1]
+
+        # Slightly inset the outline so it remains visible inside the cell borders.
+        rect = patches.Rectangle(
+            (x_low - 0.45, y_low - 0.45),
+            x_high - x_low - 0.1,
+            y_high - y_low - 0.1,
+            linewidth=4,
+            edgecolor="red",
+            facecolor="none",
+            zorder=10,
         )
+        ax.add_patch(rect)
 
-        # Add grid lines dynamically at half-integer positions between the main ticks
-        ax = plt.gca()
-        ax.set_xticks(np.arange(0.5, data.shape[1] - 0.5, 1), minor=True)
-        ax.set_yticks(np.arange(0.5, data.shape[0] - 0.5, 1), minor=True)
-        ax.grid(which="minor", color="white", linestyle="-", linewidth=1)
-        ax.tick_params(which="minor", bottom=False, left=False)
+    elif roi.is_point_cloud:
+        for point in roi.points_set:
+            if len(point) != 2:
+                raise ValueError("ROI visualization requires two-dimensional points.")
 
-    # Save image if a path is provided
-    if save_path:
-        plt.savefig(save_path, bbox_inches="tight", dpi=300)
+            x, y = point
+
+            # Slightly inset the outline so it remains visible inside the cell borders.
+            rect = patches.Rectangle(
+                (x - 0.45, y - 0.45),
+                0.9,
+                0.9,
+                linewidth=4,
+                edgecolor="red",
+                facecolor="none",
+                zorder=10,
+            )
+            ax.add_patch(rect)
+
+
+def plot_res(
+    numpy_results: np.ndarray,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    figsize: tuple[float, float] = (8, 6),
+    colorbar_orientation: str | None = "vertical",
+    save_path: str | PathLike[str] | None = None,
+    fontsize: int = 15,
+    colorbar_only: bool = False,
+) -> None:
+    """
+    Plot simulation results as a heatmap.
+
+    Args:
+        numpy_results: Array containing the values to plot.
+        vmin: Lower bound of the color scale.
+        vmax: Upper bound of the color scale.
+        figsize: Figure size in inches.
+        colorbar_orientation: Colorbar orientation, or None to omit it.
+        save_path: Optional path for saving the figure.
+        fontsize: Font size used for tick labels.
+        colorbar_only: Whether to render only the colorbar.
+    """
+    fig, _ = _plot_heatmap(
+        numpy_results,
+        vmin=vmin,
+        vmax=vmax,
+        figsize=figsize,
+        colorbar_orientation=colorbar_orientation,
+        fontsize=fontsize,
+        colorbar_only=colorbar_only,
+    )
+
+    if save_path is not None:
+        fig.savefig(
+            save_path,
+            bbox_inches="tight",
+            dpi=300,
+        )
 
     plt.show()
 
 
 def plot_res_roi(
-    numpy_results,
-    vmin=None,
-    vmax=None,
-    figsize=(8, 6),
-    colorbar_orientation="vertical",
-    save_path=None,
+    numpy_results: np.ndarray,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    figsize: tuple[float, float] = (8, 6),
+    colorbar_orientation: str | None = "vertical",
+    save_path: str | PathLike[str] | None = None,
     fontsize: int = 15,
-    colorbar_only=False,
+    colorbar_only: bool = False,
     roi: RegionOfInterest | None = None,
-):
-    """Plot the results as a heatmap using matplotlib.
+) -> None:
+    """
+    Plot simulation results as a heatmap with an optional region of interest.
 
     Args:
-        numpy_results (np.ndarray): The numpy array of results to plot.
-        vmin (float, optional): The lower bound of the color scale.
-        vmax (float, optional): The upper bound of the color scale.
-        figsize (tuple): Width and height of the figure in inches.
-        colorbar_orientation (str, optional): 'vertical', 'horizontal', or None/False to omit.
-        save_path (str, optional): File path to save the image (e.g., 'plot.png').
-        fontsize (int): Fontsize for ticks and legend.
-        colorbar_only (bool, optional): If True, renders only the colorbar/legend instead of the heatmap.
-        roi (RegionOfInterest, optional): Region of interest to highlight.
+        numpy_results: Array containing the values to plot.
+        vmin: Lower bound of the color scale.
+        vmax: Upper bound of the color scale.
+        figsize: Figure size in inches.
+        colorbar_orientation: Colorbar orientation, or None to omit it.
+        save_path: Optional path for saving the figure.
+        fontsize: Font size used for tick labels.
+        colorbar_only: Whether to render only the colorbar.
+        roi: Optional region of interest to highlight.
     """
-    if colorbar_only:
-        fig, ax = plt.subplots(figsize=figsize)
-        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        cmap = plt.get_cmap("coolwarm")
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        cbar = fig.colorbar(sm, cax=ax, orientation=colorbar_orientation)
-        cbar.ax.tick_params(labelsize=fontsize)
-    else:
-        data = numpy_results.T
+    fig, ax = _plot_heatmap(
+        numpy_results,
+        vmin=vmin,
+        vmax=vmax,
+        figsize=figsize,
+        colorbar_orientation=colorbar_orientation,
+        fontsize=fontsize,
+        colorbar_only=colorbar_only,
+    )
 
-        # Create figure with the specified size
-        plt.figure(figsize=figsize)
+    if roi is not None and not colorbar_only:
+        _highlight_roi(ax, roi)
 
-        # Pass vmin and vmax to imshow to control the color scaling
-        im = plt.imshow(data, cmap="coolwarm", origin="lower", vmin=vmin, vmax=vmax)
-
-        # Handle colorbar options
-        if colorbar_orientation == "vertical":
-            cbar = plt.colorbar(im, orientation="vertical")
-            cbar.ax.tick_params(labelsize=fontsize)
-        elif colorbar_orientation == "horizontal":
-            cbar = plt.colorbar(im, orientation="horizontal")
-            cbar.ax.tick_params(labelsize=fontsize)
-
-        plt.xticks(
-            ticks=np.arange(data.shape[1]),
-            labels=np.arange(data.shape[1]),
-            fontsize=fontsize,
+    if save_path is not None:
+        fig.savefig(
+            save_path,
+            bbox_inches="tight",
+            dpi=300,
         )
-        plt.yticks(
-            ticks=np.arange(data.shape[0]),
-            labels=np.arange(data.shape[0]),
-            fontsize=fontsize,
-        )
-
-        # Add grid lines dynamically at half-integer positions between the main ticks
-        ax = plt.gca()
-        ax.set_xticks(np.arange(0.5, data.shape[1] - 0.5, 1), minor=True)
-        ax.set_yticks(np.arange(0.5, data.shape[0] - 0.5, 1), minor=True)
-        ax.grid(which="minor", color="black", linestyle="-", linewidth=1)
-        ax.tick_params(which="minor", bottom=False, left=False)
-
-        # Highlight Region of Interest (ROI) if provided
-        if roi is not None:
-            if roi.is_subgrid:
-                # bounds is a list of (low, high) tuples for each dimension (transposed data mapping: dim 0 -> x, dim 1 -> y)
-                x_low, x_high = roi.bounds[0]
-                y_low, y_high = roi.bounds[1]
-                width = x_high - x_low
-                height = y_high - y_low
-
-                # Since origin="lower" and cells are centered on integers,
-                # a cell at index `i` spans from `i - 0.5` to `i + 0.5`
-                rect = patches.Rectangle(
-                    (x_low - 0.45, y_low - 0.45),
-                    width - 0.1,
-                    height - 0.1,
-                    linewidth=4,
-                    edgecolor="red",
-                    facecolor="none",
-                )
-                ax.add_patch(rect)
-                print("subgrid")
-
-            elif roi.is_point_cloud:
-                for pt in roi.points_set:
-                    x, y = pt[0], pt[1]
-                    rect = patches.Rectangle(
-                        (x - 0.45, y - 0.45),
-                        0.9,
-                        0.9,
-                        linewidth=4,
-                        edgecolor="red",
-                        facecolor="none",
-                        zorder=10,
-                    )
-                    ax.add_patch(rect)
-                print("Cloud")
-
-    # Save image if a path is provided
-    if save_path:
-        plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
     plt.show()
