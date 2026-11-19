@@ -8,6 +8,8 @@ import seaborn as sns
 
 figsize = (7, 4)
 
+out_folder = "scaling_plots"
+
 
 def setup_publication_style():
     """Configure matplotlib rcParams for publication-quality figures."""
@@ -97,7 +99,7 @@ def main():
     )
     plt.tight_layout()
 
-    pdf_ratio_name = "iqae_cnot_ratio.pdf"
+    pdf_ratio_name = f"{out_folder}/iqae_cnot_ratio.pdf"
     fig1.savefig(pdf_ratio_name, format="pdf", bbox_inches="tight", dpi=300)
     print(f"Saved publication-ready CNOT ratio plot to {pdf_ratio_name}")
     plt.close(fig1)
@@ -160,7 +162,7 @@ def main():
     )
     plt.tight_layout()
 
-    pdf_time_name = "iqae_execution_time.pdf"
+    pdf_time_name = f"{out_folder}/iqae_execution_time.pdf"
     fig2.savefig(pdf_time_name, format="pdf", bbox_inches="tight", dpi=300)
     print(f"Saved publication-ready execution time plot to {pdf_time_name}")
     plt.close(fig2)
@@ -213,7 +215,7 @@ def main():
     )
     plt.tight_layout()
 
-    pdf_comparison_name = "iqae_gate_comparison.pdf"
+    pdf_comparison_name = f"{out_folder}/iqae_gate_comparison.pdf"
     fig3.savefig(pdf_comparison_name, format="pdf", bbox_inches="tight", dpi=300)
     print(f"Saved publication-ready gate comparison plot to {pdf_comparison_name}")
     plt.close(fig3)

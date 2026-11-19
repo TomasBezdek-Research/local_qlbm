@@ -6,6 +6,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import ticker
 
+out_folder = "scaling_plots"
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -121,7 +123,7 @@ def main():
     ax1.legend(title=r"$\epsilon$", loc="upper left", ncols=2)
     plt.tight_layout()
 
-    pdf_delta_name = f"iqae_scaling_delta_{args.experiment_name}.pdf"
+    pdf_delta_name = f"{out_folder}/iqae_scaling_delta_{args.experiment_name}.pdf"
     fig1.savefig(pdf_delta_name, format="pdf", bbox_inches="tight")
     print(f"Saved Delta scaling plot to {pdf_delta_name}")
     plt.close(fig1)
@@ -173,7 +175,7 @@ def main():
     ax2.legend(title=r"$\delta$", loc="upper left", ncols=2)
     plt.tight_layout()
 
-    pdf_eps_name = f"iqae_scaling_epsilon_{args.experiment_name}.pdf"
+    pdf_eps_name = f"{out_folder}/iqae_scaling_epsilon_{args.experiment_name}.pdf"
     fig2.savefig(pdf_eps_name, format="pdf", bbox_inches="tight")
     print(f"Saved Epsilon scaling plot to {pdf_eps_name}")
     plt.close(fig2)
@@ -212,7 +214,7 @@ def main():
     ax3.legend(title=r"$\delta$", loc="upper left", ncols=2)
     plt.tight_layout()
 
-    pdf_iter_name = f"iqae_iterations_epsilon_{args.experiment_name}.pdf"
+    pdf_iter_name = f"{out_folder}/iqae_iterations_epsilon_{args.experiment_name}.pdf"
     fig3.savefig(pdf_iter_name, format="pdf", bbox_inches="tight")
     print(f"Saved Iterations vs Epsilon plot to {pdf_iter_name}")
     plt.close(fig3)

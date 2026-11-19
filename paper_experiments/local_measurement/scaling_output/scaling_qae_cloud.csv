@@ -1,0 +1,5 @@
+QAE_Precision,Shot_Config,Shots,Run_Index,Estimated_Probability,num_qubits,depth,gate_count,cnot_total,x_count,h_count,u3_count,cx_count,t_count,t_dg_count,p_count
+1,1,1,1,0.0,70,6575,24438,9715,708,2537,47,9703,2816,3524,4445
+1,1,1,2,1.0,70,6575,24438,9715,708,2537,47,9703,2816,3524,4445
+1,5,5,1,0.2,70,6575,24438,9715,708,2537,47,9703,2816,3524,4445
+1,5,5,2,0.2,70,6575,24438,9715,708,2537,47,9703,2816,3524,4445

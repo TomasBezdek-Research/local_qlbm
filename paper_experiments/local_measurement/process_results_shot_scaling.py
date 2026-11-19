@@ -7,6 +7,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.ticker import FixedFormatter, FixedLocator, NullLocator
 
+out_folder = "scaling_plots"
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -202,7 +204,7 @@ def main():
     )
     plt.tight_layout()
 
-    pdf_eps_name = f"scaling_epsilon_{args.experiment_name}.pdf"
+    pdf_eps_name = f"{out_folder}/scaling_epsilon_{args.experiment_name}.pdf"
     fig1.savefig(pdf_eps_name, format="pdf", bbox_inches="tight")
     print(f"Saved Epsilon-squared scaling plot to '{pdf_eps_name}'")
     plt.close(fig1)
@@ -328,7 +330,7 @@ def main():
     )
     plt.tight_layout()
 
-    pdf_delta_name = f"scaling_delta_{args.experiment_name}.pdf"
+    pdf_delta_name = f"{out_folder}/scaling_delta_{args.experiment_name}.pdf"
     fig2.savefig(pdf_delta_name, format="pdf", bbox_inches="tight")
     print(f"Saved Delta scaling plot to '{pdf_delta_name}'")
     plt.close(fig2)
