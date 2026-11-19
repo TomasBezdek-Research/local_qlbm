@@ -1,5 +1,4 @@
 import csv
-from collections.abc import Sequence
 
 from local_measurement.region_measurement import (
     EstimationOptions,
@@ -7,17 +6,21 @@ from local_measurement.region_measurement import (
     RegionMeasurementMethod,
     estimate_region_probability,
 )
-from paper_experiments.local_measurement.circut_analysis import analyze_circuit
 from qlbm.api.grid import LBMGrid
 from qlbm.config.enums import BoundaryCondition, VelocitySet
 from qlbm.config.roi import RegionOfInterest
 
 GRID = LBMGrid(
-    grid_size=[4, 4],
+    grid_size=[32, 32],
     velocity_set=VelocitySet.D2Q9,
     boundary_conditions=[BoundaryCondition.SIMPLE_SLIP, BoundaryCondition.BOUNCE_BACK],
 )
-INIT_ROI = RegionOfInterest.from_bounds(bounds=[(0, 3), (0, 3)])
+GRID = LBMGrid(
+    grid_size=[8, 8],
+    velocity_set=VelocitySet.D2Q9,
+    boundary_conditions=[BoundaryCondition.SIMPLE_SLIP, BoundaryCondition.BOUNCE_BACK],
+)
+INIT_ROI = RegionOfInterest.from_bounds(bounds=[(0, 2), (0, 3)])
 INIT_VELOCITY = [-1, -1]
 ITERATIONS = 1
 
@@ -69,7 +72,7 @@ def run_analysis(
         flag_oracle=grid.flag_oracle(measure_roi),
         phase_oracle=grid.phase_oracle(measure_roi),
         classical_classifier=grid.classical_classifier(measure_roi),
-        sampling_measurement=grid.sampling_measurement_function(shots=shots),
+        sampling_measurement=grid.sampling_measurement_function(),
     )
 
     estimation_options = EstimationOptions(
@@ -118,14 +121,16 @@ def verification(
 
 
 if __name__ == "__main__":
-    repetitions = 1  # 100
-    roi_one_point = RegionOfInterest.from_points(points={(1, 1)})
-    roi_zero = RegionOfInterest.from_points(points={(2, 3)})
-    roi_interval = RegionOfInterest.from_bounds(bounds=[(1, 4), (0, 2)])
-    roi_cloud = RegionOfInterest.from_points(points={(0, 1), (2, 0), (2, 3), (3, 1)})
+    repetitions = 10  # 100
+    roi_something = RegionOfInterest.from_points(points={(3, 3)})
+    roi_zero = RegionOfInterest.from_points(points={(10, 10)})
+    roi_interval = RegionOfInterest.from_bounds(bounds=[(1, 7), (0, 2)])
+    roi_cloud = RegionOfInterest.from_points(
+        points={(0, 2), (3, 0), (20, 20), (15, 12), (30, 29)}
+    )
 
-    out_name = "small_point_default"
-    roi_mes = roi_one_point
+    out_name = "zero_qae"
+    roi_mes = roi_zero
 
     results = {}
     for method in [
@@ -140,10 +145,10 @@ if __name__ == "__main__":
                 verification(
                     method=method,
                     measure_roi=roi_mes,
-                    eps=1e-2,
+                    eps=2 * 1e-1,
                     alpha=0.05,
-                    shots=10,
-                    qae_precision=3,
+                    shots=None,
+                    qae_precision=2,
                 )
             )
         print(method.name, ":  ", results[method])
@@ -160,18 +165,9 @@ if __name__ == "__main__":
         for key, values in results.items():
             writer.writerow([key.name] + values)
 
-    GRID.set_initial_state(bubble_roi=INIT_ROI, velocity=INIT_VELOCITY)
-    GRID.run_simulation(iterations=1)
-    res = GRID.measure_density()
-    print(res)
-    np_res = GRID.physical_density_to_numpy(res)
-    GRID.plot_numpy_results_roi(
-        np_res,
-        vmin=0,
-        vmax=0.4,
-        figsize=(8, 8),
-        colorbar_orientation=False,
-        save_path="initial_one_point.pdf",
-        colorbar_only=False,
-        roi=roi_one_point,
-    )
+    # GRID.set_initial_state(bubble_roi=INIT_ROI, velocity=INIT_VELOCITY)
+    # GRID.run_simulation(iterations=1)
+    # res = GRID.measure_density()
+    # print(res)
+    # np_res = GRID.physical_density_to_numpy(res)
+    # GRID.plot_numpy_results(np_res, vmin=0, vmax=0.1)
