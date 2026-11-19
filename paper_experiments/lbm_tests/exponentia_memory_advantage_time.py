@@ -159,7 +159,7 @@ def save_results_to_txt(results, filename="scaling_analysis.txt"):
 
 
 if __name__ == "__main__":
-    # all_results_grid_scalling = []
+    # all_results_grid_scaling = []
 
     # for bc in [
     #     BoundaryCondition.PERIODIC,
@@ -173,13 +173,13 @@ if __name__ == "__main__":
     #         for m in range(1, 10):
     #             for iter in [0, 1, 5]:
     #                 result = analyze_circuit(d=d, m=m, bc=bc, iterations=iter)
-    #                 all_results_grid_scalling.append(result)
+    #                 all_results_grid_scaling.append(result)
 
     # # ✅ Save everything
-    # save_results_to_csv(all_results_grid_scalling, "grid_scalling_results.csv")
-    # save_results_to_txt(all_results_grid_scalling, "grid_scalling_results.txt")
+    # save_results_to_csv(all_results_grid_scaling, "grid_scaling_results.csv")
+    # save_results_to_txt(all_results_grid_scaling, "grid_scaling_results.txt")
 
-    all_results_time_scalling = []
+    all_results_time_scaling = []
 
     for bc in [
         BoundaryCondition.PERIODIC,
@@ -192,8 +192,8 @@ if __name__ == "__main__":
         for d in range(1, 4):
             for i in range(0, 7):
                 result = analyze_circuit(d, 5, bc, 2**i)
-                all_results_time_scalling.append(result)
+                all_results_time_scaling.append(result)
 
     # ✅ Save everything
-    save_results_to_csv(all_results_time_scalling, "time_scalling_results.csv")
-    save_results_to_txt(all_results_time_scalling, "time_scalling_results.txt")
+    save_results_to_csv(all_results_time_scaling, "time_scaling_results.csv")
+    save_results_to_txt(all_results_time_scaling, "time_scaling_results.txt")
