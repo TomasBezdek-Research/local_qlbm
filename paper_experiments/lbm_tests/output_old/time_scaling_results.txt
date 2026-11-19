@@ -1,0 +1,1197 @@
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 1
+
+Number of Qubits: 10
+Depth of circuit: 842
+Number of Gates: 1724
+Number of x-Gates: 4
+Number of Hadamard-Gates: 174
+Number of u3-Gates: 2
+Number of cx-Gates: 784
+Number of t-Gates: 138
+Number of t-dg-Gates: 184
+Number of p-Gates: 438
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 2
+
+Number of Qubits: 10
+Depth of circuit: 1696
+Number of Gates: 3498
+Number of x-Gates: 8
+Number of Hadamard-Gates: 350
+Number of u3-Gates: 2
+Number of cx-Gates: 1596
+Number of t-Gates: 276
+Number of t-dg-Gates: 368
+Number of p-Gates: 898
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 4
+
+Number of Qubits: 10
+Depth of circuit: 3404
+Number of Gates: 7046
+Number of x-Gates: 16
+Number of Hadamard-Gates: 702
+Number of u3-Gates: 2
+Number of cx-Gates: 3220
+Number of t-Gates: 552
+Number of t-dg-Gates: 736
+Number of p-Gates: 1818
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 8
+
+Number of Qubits: 10
+Depth of circuit: 6820
+Number of Gates: 14142
+Number of x-Gates: 32
+Number of Hadamard-Gates: 1406
+Number of u3-Gates: 2
+Number of cx-Gates: 6468
+Number of t-Gates: 1104
+Number of t-dg-Gates: 1472
+Number of p-Gates: 3658
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 16
+
+Number of Qubits: 10
+Depth of circuit: 13652
+Number of Gates: 28334
+Number of x-Gates: 64
+Number of Hadamard-Gates: 2814
+Number of u3-Gates: 2
+Number of cx-Gates: 12964
+Number of t-Gates: 2208
+Number of t-dg-Gates: 2944
+Number of p-Gates: 7338
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 32
+
+Number of Qubits: 10
+Depth of circuit: 27316
+Number of Gates: 56718
+Number of x-Gates: 128
+Number of Hadamard-Gates: 5630
+Number of u3-Gates: 2
+Number of cx-Gates: 25956
+Number of t-Gates: 4416
+Number of t-dg-Gates: 5888
+Number of p-Gates: 14698
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 64
+
+Number of Qubits: 10
+Depth of circuit: 54829
+Number of Gates: 113486
+Number of x-Gates: 256
+Number of Hadamard-Gates: 11262
+Number of u3-Gates: 2
+Number of cx-Gates: 51940
+Number of t-Gates: 8832
+Number of t-dg-Gates: 11776
+Number of p-Gates: 29418
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 1
+
+Number of Qubits: 10
+Depth of circuit: 842
+Number of Gates: 1724
+Number of x-Gates: 4
+Number of Hadamard-Gates: 174
+Number of u3-Gates: 2
+Number of cx-Gates: 784
+Number of t-Gates: 138
+Number of t-dg-Gates: 184
+Number of p-Gates: 438
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 2
+
+Number of Qubits: 10
+Depth of circuit: 1696
+Number of Gates: 3498
+Number of x-Gates: 8
+Number of Hadamard-Gates: 350
+Number of u3-Gates: 2
+Number of cx-Gates: 1596
+Number of t-Gates: 276
+Number of t-dg-Gates: 368
+Number of p-Gates: 898
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 4
+
+Number of Qubits: 10
+Depth of circuit: 3404
+Number of Gates: 7046
+Number of x-Gates: 16
+Number of Hadamard-Gates: 702
+Number of u3-Gates: 2
+Number of cx-Gates: 3220
+Number of t-Gates: 552
+Number of t-dg-Gates: 736
+Number of p-Gates: 1818
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 8
+
+Number of Qubits: 10
+Depth of circuit: 6820
+Number of Gates: 14142
+Number of x-Gates: 32
+Number of Hadamard-Gates: 1406
+Number of u3-Gates: 2
+Number of cx-Gates: 6468
+Number of t-Gates: 1104
+Number of t-dg-Gates: 1472
+Number of p-Gates: 3658
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 16
+
+Number of Qubits: 10
+Depth of circuit: 13652
+Number of Gates: 28334
+Number of x-Gates: 64
+Number of Hadamard-Gates: 2814
+Number of u3-Gates: 2
+Number of cx-Gates: 12964
+Number of t-Gates: 2208
+Number of t-dg-Gates: 2944
+Number of p-Gates: 7338
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 32
+
+Number of Qubits: 10
+Depth of circuit: 27316
+Number of Gates: 56718
+Number of x-Gates: 128
+Number of Hadamard-Gates: 5630
+Number of u3-Gates: 2
+Number of cx-Gates: 25956
+Number of t-Gates: 4416
+Number of t-dg-Gates: 5888
+Number of p-Gates: 14698
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 64
+
+Number of Qubits: 10
+Depth of circuit: 54829
+Number of Gates: 113486
+Number of x-Gates: 256
+Number of Hadamard-Gates: 11262
+Number of u3-Gates: 2
+Number of cx-Gates: 51940
+Number of t-Gates: 8832
+Number of t-dg-Gates: 11776
+Number of p-Gates: 29418
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 1
+
+Number of Qubits: 10
+Depth of circuit: 842
+Number of Gates: 1724
+Number of x-Gates: 4
+Number of Hadamard-Gates: 174
+Number of u3-Gates: 2
+Number of cx-Gates: 784
+Number of t-Gates: 138
+Number of t-dg-Gates: 184
+Number of p-Gates: 438
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 2
+
+Number of Qubits: 10
+Depth of circuit: 1696
+Number of Gates: 3498
+Number of x-Gates: 8
+Number of Hadamard-Gates: 350
+Number of u3-Gates: 2
+Number of cx-Gates: 1596
+Number of t-Gates: 276
+Number of t-dg-Gates: 368
+Number of p-Gates: 898
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 4
+
+Number of Qubits: 10
+Depth of circuit: 3404
+Number of Gates: 7046
+Number of x-Gates: 16
+Number of Hadamard-Gates: 702
+Number of u3-Gates: 2
+Number of cx-Gates: 3220
+Number of t-Gates: 552
+Number of t-dg-Gates: 736
+Number of p-Gates: 1818
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 8
+
+Number of Qubits: 10
+Depth of circuit: 6820
+Number of Gates: 14142
+Number of x-Gates: 32
+Number of Hadamard-Gates: 1406
+Number of u3-Gates: 2
+Number of cx-Gates: 6468
+Number of t-Gates: 1104
+Number of t-dg-Gates: 1472
+Number of p-Gates: 3658
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 16
+
+Number of Qubits: 10
+Depth of circuit: 13652
+Number of Gates: 28334
+Number of x-Gates: 64
+Number of Hadamard-Gates: 2814
+Number of u3-Gates: 2
+Number of cx-Gates: 12964
+Number of t-Gates: 2208
+Number of t-dg-Gates: 2944
+Number of p-Gates: 7338
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 32
+
+Number of Qubits: 10
+Depth of circuit: 27316
+Number of Gates: 56718
+Number of x-Gates: 128
+Number of Hadamard-Gates: 5630
+Number of u3-Gates: 2
+Number of cx-Gates: 25956
+Number of t-Gates: 4416
+Number of t-dg-Gates: 5888
+Number of p-Gates: 14698
+
+##################################################
+
+Boundary Condition: PERIODIC
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 64
+
+Number of Qubits: 10
+Depth of circuit: 54829
+Number of Gates: 113486
+Number of x-Gates: 256
+Number of Hadamard-Gates: 11262
+Number of u3-Gates: 2
+Number of cx-Gates: 51940
+Number of t-Gates: 8832
+Number of t-dg-Gates: 11776
+Number of p-Gates: 29418
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 1
+
+Number of Qubits: 17
+Depth of circuit: 2433
+Number of Gates: 5883
+Number of x-Gates: 136
+Number of Hadamard-Gates: 476
+Number of u3-Gates: 34
+Number of cx-Gates: 2652
+Number of t-Gates: 428
+Number of t-dg-Gates: 540
+Number of p-Gates: 1512
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 2
+
+Number of Qubits: 17
+Depth of circuit: 4801
+Number of Gates: 11700
+Number of x-Gates: 272
+Number of Hadamard-Gates: 952
+Number of u3-Gates: 34
+Number of cx-Gates: 5273
+Number of t-Gates: 856
+Number of t-dg-Gates: 1080
+Number of p-Gates: 3024
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 4
+
+Number of Qubits: 17
+Depth of circuit: 9537
+Number of Gates: 23334
+Number of x-Gates: 544
+Number of Hadamard-Gates: 1904
+Number of u3-Gates: 34
+Number of cx-Gates: 10515
+Number of t-Gates: 1712
+Number of t-dg-Gates: 2160
+Number of p-Gates: 6048
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 8
+
+Number of Qubits: 17
+Depth of circuit: 19009
+Number of Gates: 46602
+Number of x-Gates: 1088
+Number of Hadamard-Gates: 3808
+Number of u3-Gates: 34
+Number of cx-Gates: 20999
+Number of t-Gates: 3424
+Number of t-dg-Gates: 4320
+Number of p-Gates: 12096
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 16
+
+Number of Qubits: 17
+Depth of circuit: 37975
+Number of Gates: 93138
+Number of x-Gates: 2176
+Number of Hadamard-Gates: 7616
+Number of u3-Gates: 34
+Number of cx-Gates: 41967
+Number of t-Gates: 6848
+Number of t-dg-Gates: 8640
+Number of p-Gates: 24192
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 32
+
+Number of Qubits: 17
+Depth of circuit: 75934
+Number of Gates: 186210
+Number of x-Gates: 4352
+Number of Hadamard-Gates: 15232
+Number of u3-Gates: 34
+Number of cx-Gates: 83903
+Number of t-Gates: 13696
+Number of t-dg-Gates: 17280
+Number of p-Gates: 48384
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 64
+
+Number of Qubits: 17
+Depth of circuit: 152095
+Number of Gates: 372354
+Number of x-Gates: 8704
+Number of Hadamard-Gates: 30464
+Number of u3-Gates: 34
+Number of cx-Gates: 167775
+Number of t-Gates: 27392
+Number of t-dg-Gates: 34560
+Number of p-Gates: 96768
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 1
+
+Number of Qubits: 26
+Depth of circuit: 4013
+Number of Gates: 11777
+Number of x-Gates: 270
+Number of Hadamard-Gates: 952
+Number of u3-Gates: 68
+Number of cx-Gates: 5306
+Number of t-Gates: 860
+Number of t-dg-Gates: 1084
+Number of p-Gates: 3024
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 2
+
+Number of Qubits: 26
+Depth of circuit: 7977
+Number of Gates: 23423
+Number of x-Gates: 540
+Number of Hadamard-Gates: 1904
+Number of u3-Gates: 68
+Number of cx-Gates: 10550
+Number of t-Gates: 1720
+Number of t-dg-Gates: 2168
+Number of p-Gates: 6048
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 4
+
+Number of Qubits: 26
+Depth of circuit: 15891
+Number of Gates: 46717
+Number of x-Gates: 1080
+Number of Hadamard-Gates: 3808
+Number of u3-Gates: 68
+Number of cx-Gates: 21038
+Number of t-Gates: 3440
+Number of t-dg-Gates: 4336
+Number of p-Gates: 12098
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 8
+
+Number of Qubits: 26
+Depth of circuit: 31739
+Number of Gates: 93305
+Number of x-Gates: 2160
+Number of Hadamard-Gates: 7616
+Number of u3-Gates: 68
+Number of cx-Gates: 42014
+Number of t-Gates: 6880
+Number of t-dg-Gates: 8672
+Number of p-Gates: 24198
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 16
+
+Number of Qubits: 26
+Depth of circuit: 63542
+Number of Gates: 186481
+Number of x-Gates: 4320
+Number of Hadamard-Gates: 15232
+Number of u3-Gates: 68
+Number of cx-Gates: 83966
+Number of t-Gates: 13760
+Number of t-dg-Gates: 17344
+Number of p-Gates: 48398
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 32
+
+Number of Qubits: 26
+Depth of circuit: 127202
+Number of Gates: 372836
+Number of x-Gates: 8640
+Number of Hadamard-Gates: 30464
+Number of u3-Gates: 68
+Number of cx-Gates: 167870
+Number of t-Gates: 27520
+Number of t-dg-Gates: 34688
+Number of p-Gates: 96801
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 64
+
+Number of Qubits: 26
+Depth of circuit: 254728
+Number of Gates: 745599
+Number of x-Gates: 17280
+Number of Hadamard-Gates: 60928
+Number of u3-Gates: 68
+Number of cx-Gates: 335678
+Number of t-Gates: 55040
+Number of t-dg-Gates: 69376
+Number of p-Gates: 193660
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 1
+
+Number of Qubits: 35
+Depth of circuit: 5476
+Number of Gates: 17673
+Number of x-Gates: 404
+Number of Hadamard-Gates: 1436
+Number of u3-Gates: 102
+Number of cx-Gates: 7962
+Number of t-Gates: 1292
+Number of t-dg-Gates: 1628
+Number of p-Gates: 4536
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 2
+
+Number of Qubits: 35
+Depth of circuit: 11528
+Number of Gates: 35150
+Number of x-Gates: 808
+Number of Hadamard-Gates: 2872
+Number of u3-Gates: 102
+Number of cx-Gates: 15831
+Number of t-Gates: 2584
+Number of t-dg-Gates: 3256
+Number of p-Gates: 9072
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 4
+
+Number of Qubits: 35
+Depth of circuit: 23632
+Number of Gates: 70104
+Number of x-Gates: 1616
+Number of Hadamard-Gates: 5744
+Number of u3-Gates: 102
+Number of cx-Gates: 31569
+Number of t-Gates: 5168
+Number of t-dg-Gates: 6512
+Number of p-Gates: 18144
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 8
+
+Number of Qubits: 35
+Depth of circuit: 47891
+Number of Gates: 140012
+Number of x-Gates: 3232
+Number of Hadamard-Gates: 11488
+Number of u3-Gates: 102
+Number of cx-Gates: 63045
+Number of t-Gates: 10336
+Number of t-dg-Gates: 13024
+Number of p-Gates: 36288
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 16
+
+Number of Qubits: 35
+Depth of circuit: 96654
+Number of Gates: 279828
+Number of x-Gates: 6464
+Number of Hadamard-Gates: 22976
+Number of u3-Gates: 102
+Number of cx-Gates: 125997
+Number of t-Gates: 20672
+Number of t-dg-Gates: 26048
+Number of p-Gates: 72576
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 32
+
+Number of Qubits: 35
+Depth of circuit: 194140
+Number of Gates: 559502
+Number of x-Gates: 12928
+Number of Hadamard-Gates: 45952
+Number of u3-Gates: 102
+Number of cx-Gates: 251901
+Number of t-Gates: 41344
+Number of t-dg-Gates: 52096
+Number of p-Gates: 145194
+
+##################################################
+
+Boundary Condition: BOUNCE_BACK
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 64
+
+Number of Qubits: 35
+Depth of circuit: 389625
+Number of Gates: 1118891
+Number of x-Gates: 25856
+Number of Hadamard-Gates: 91904
+Number of u3-Gates: 102
+Number of cx-Gates: 503709
+Number of t-Gates: 82688
+Number of t-dg-Gates: 104192
+Number of p-Gates: 290471
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 1
+
+Number of Qubits: 17
+Depth of circuit: 2467
+Number of Gates: 5867
+Number of x-Gates: 130
+Number of Hadamard-Gates: 476
+Number of u3-Gates: 34
+Number of cx-Gates: 2646
+Number of t-Gates: 428
+Number of t-dg-Gates: 540
+Number of p-Gates: 1508
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 2
+
+Number of Qubits: 17
+Depth of circuit: 4869
+Number of Gates: 11668
+Number of x-Gates: 260
+Number of Hadamard-Gates: 952
+Number of u3-Gates: 34
+Number of cx-Gates: 5261
+Number of t-Gates: 856
+Number of t-dg-Gates: 1080
+Number of p-Gates: 3016
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 4
+
+Number of Qubits: 17
+Depth of circuit: 9673
+Number of Gates: 23270
+Number of x-Gates: 520
+Number of Hadamard-Gates: 1904
+Number of u3-Gates: 34
+Number of cx-Gates: 10491
+Number of t-Gates: 1712
+Number of t-dg-Gates: 2160
+Number of p-Gates: 6032
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 8
+
+Number of Qubits: 17
+Depth of circuit: 19281
+Number of Gates: 46474
+Number of x-Gates: 1040
+Number of Hadamard-Gates: 3808
+Number of u3-Gates: 34
+Number of cx-Gates: 20951
+Number of t-Gates: 3424
+Number of t-dg-Gates: 4320
+Number of p-Gates: 12064
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 16
+
+Number of Qubits: 17
+Depth of circuit: 38537
+Number of Gates: 92882
+Number of x-Gates: 2080
+Number of Hadamard-Gates: 7616
+Number of u3-Gates: 34
+Number of cx-Gates: 41871
+Number of t-Gates: 6848
+Number of t-dg-Gates: 8640
+Number of p-Gates: 24128
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 32
+
+Number of Qubits: 17
+Depth of circuit: 77244
+Number of Gates: 185698
+Number of x-Gates: 4160
+Number of Hadamard-Gates: 15232
+Number of u3-Gates: 34
+Number of cx-Gates: 83711
+Number of t-Gates: 13696
+Number of t-dg-Gates: 17280
+Number of p-Gates: 48256
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 1
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32
+Iterations: 64
+
+Number of Qubits: 17
+Depth of circuit: 154624
+Number of Gates: 371330
+Number of x-Gates: 8320
+Number of Hadamard-Gates: 30464
+Number of u3-Gates: 34
+Number of cx-Gates: 167391
+Number of t-Gates: 27392
+Number of t-dg-Gates: 34560
+Number of p-Gates: 96512
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 1
+
+Number of Qubits: 26
+Depth of circuit: 4801
+Number of Gates: 11733
+Number of x-Gates: 260
+Number of Hadamard-Gates: 952
+Number of u3-Gates: 68
+Number of cx-Gates: 5292
+Number of t-Gates: 856
+Number of t-dg-Gates: 1080
+Number of p-Gates: 3016
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 2
+
+Number of Qubits: 26
+Depth of circuit: 9557
+Number of Gates: 23335
+Number of x-Gates: 520
+Number of Hadamard-Gates: 1904
+Number of u3-Gates: 68
+Number of cx-Gates: 10522
+Number of t-Gates: 1712
+Number of t-dg-Gates: 2160
+Number of p-Gates: 6032
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 4
+
+Number of Qubits: 26
+Depth of circuit: 19069
+Number of Gates: 46539
+Number of x-Gates: 1040
+Number of Hadamard-Gates: 3808
+Number of u3-Gates: 68
+Number of cx-Gates: 20982
+Number of t-Gates: 3424
+Number of t-dg-Gates: 4320
+Number of p-Gates: 12064
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 8
+
+Number of Qubits: 26
+Depth of circuit: 38133
+Number of Gates: 92947
+Number of x-Gates: 2080
+Number of Hadamard-Gates: 7616
+Number of u3-Gates: 68
+Number of cx-Gates: 41902
+Number of t-Gates: 6848
+Number of t-dg-Gates: 8640
+Number of p-Gates: 24128
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 16
+
+Number of Qubits: 26
+Depth of circuit: 76366
+Number of Gates: 185763
+Number of x-Gates: 4160
+Number of Hadamard-Gates: 15232
+Number of u3-Gates: 68
+Number of cx-Gates: 83742
+Number of t-Gates: 13696
+Number of t-dg-Gates: 17280
+Number of p-Gates: 48256
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 32
+
+Number of Qubits: 26
+Depth of circuit: 152841
+Number of Gates: 371395
+Number of x-Gates: 8320
+Number of Hadamard-Gates: 30464
+Number of u3-Gates: 68
+Number of cx-Gates: 167422
+Number of t-Gates: 27392
+Number of t-dg-Gates: 34560
+Number of p-Gates: 96512
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 2
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 1024
+Iterations: 64
+
+Number of Qubits: 26
+Depth of circuit: 305563
+Number of Gates: 742663
+Number of x-Gates: 16640
+Number of Hadamard-Gates: 60928
+Number of u3-Gates: 68
+Number of cx-Gates: 334782
+Number of t-Gates: 54784
+Number of t-dg-Gates: 69120
+Number of p-Gates: 193028
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 1
+
+Number of Qubits: 35
+Depth of circuit: 7107
+Number of Gates: 17599
+Number of x-Gates: 390
+Number of Hadamard-Gates: 1428
+Number of u3-Gates: 102
+Number of cx-Gates: 7938
+Number of t-Gates: 1284
+Number of t-dg-Gates: 1620
+Number of p-Gates: 4524
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 2
+
+Number of Qubits: 35
+Depth of circuit: 14203
+Number of Gates: 35003
+Number of x-Gates: 780
+Number of Hadamard-Gates: 2856
+Number of u3-Gates: 102
+Number of cx-Gates: 15783
+Number of t-Gates: 2568
+Number of t-dg-Gates: 3240
+Number of p-Gates: 9049
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 4
+
+Number of Qubits: 35
+Depth of circuit: 28411
+Number of Gates: 69811
+Number of x-Gates: 1560
+Number of Hadamard-Gates: 5712
+Number of u3-Gates: 102
+Number of cx-Gates: 31473
+Number of t-Gates: 5136
+Number of t-dg-Gates: 6480
+Number of p-Gates: 18099
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 8
+
+Number of Qubits: 35
+Depth of circuit: 56816
+Number of Gates: 139427
+Number of x-Gates: 3120
+Number of Hadamard-Gates: 11424
+Number of u3-Gates: 102
+Number of cx-Gates: 62853
+Number of t-Gates: 10272
+Number of t-dg-Gates: 12960
+Number of p-Gates: 36199
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 16
+
+Number of Qubits: 35
+Depth of circuit: 113848
+Number of Gates: 278659
+Number of x-Gates: 6240
+Number of Hadamard-Gates: 22848
+Number of u3-Gates: 102
+Number of cx-Gates: 125613
+Number of t-Gates: 20544
+Number of t-dg-Gates: 25920
+Number of p-Gates: 72399
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 32
+
+Number of Qubits: 35
+Depth of circuit: 228192
+Number of Gates: 557123
+Number of x-Gates: 12480
+Number of Hadamard-Gates: 45696
+Number of u3-Gates: 102
+Number of cx-Gates: 251133
+Number of t-Gates: 41088
+Number of t-dg-Gates: 51840
+Number of p-Gates: 144799
+
+##################################################
+
+Boundary Condition: SIMPLE_SLIP
+Value for d: 3
+Value for m: 5, n=2^m: 32
+Grid Size - (2^m)^d: 32768
+Iterations: 64
+
+Number of Qubits: 35
+Depth of circuit: 456432
+Number of Gates: 1114060
+Number of x-Gates: 24960
+Number of Hadamard-Gates: 91392
+Number of u3-Gates: 102
+Number of cx-Gates: 502173
+Number of t-Gates: 82176
+Number of t-dg-Gates: 103680
+Number of p-Gates: 289608
+
+##################################################
+

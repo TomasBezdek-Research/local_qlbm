@@ -1,5 +1,8 @@
-from local_qlbm.grid import LBMGrid
-from local_qlbm.types import BoundaryCondition, RegionOfInterest, VelocitySet
+from qrisp import QuantumModulus
+
+from qlbm.api.grid import LBMGrid
+from qlbm.config.enums import BoundaryCondition, VelocitySet
+from qlbm.config.roi import RegionOfInterest
 
 """
 Simple LBM simulation tutorial.
@@ -75,7 +78,7 @@ def run_simulation_step_by_step():
     grid.set_initial_state(initial_bubble, initial_velocity)
 
     # Apply initial conditions
-    grid.apply_conditions()
+    grid.initialize()
 
     # Iterate through the simulation
     for _ in range(2):
@@ -86,10 +89,53 @@ def run_simulation_step_by_step():
     print("Grid density (step-by-step):", mes)
 
 
+def run_simulation_depth() -> QuantumModulus:
+    """
+    Run a simple LBM simulation automatically.
+    """
+
+    # Define the simulation grid
+    grid = LBMGrid(
+        grid_size=[8, 8, 4],
+        velocity_set=VelocitySet.D3Q27,
+        boundary_conditions=[
+            BoundaryCondition.PERIODIC,
+            BoundaryCondition.PERIODIC,
+            BoundaryCondition.PERIODIC,
+        ],
+    )
+
+    # Define the initial bubble region
+    initial_bubble = RegionOfInterest.from_bounds(
+        bounds=[
+            (4, 6),
+            (0, 1),
+            (2, 3),
+        ]
+    )
+
+    # Define the initial velocity of the bubble
+    initial_velocity = [1, -1, 1]
+
+    # Set the initial state of the grid
+    grid.set_initial_state(initial_bubble, initial_velocity)
+
+    # Run the simulation with 2 iterations
+    grid.run_simulation(iterations=2, init=True)
+    # grid.measure_density()
+    return grid.position_register[0]
+    # mes = grid.measure_density()
+    # print("Grid density (automatic):", mes)
+
+
 if __name__ == "__main__":
     """
     Main entry point for the simple simulation tutorial.
     """
+
+    pos = run_simulation_depth()
+    res = pos.qs.compile().transpile()
+    print(f"Circuit analysis: \nNumber of qubits: {res.num_qubits()}")
 
     # Run the simulation automatically
     run_simulation_automatic()
